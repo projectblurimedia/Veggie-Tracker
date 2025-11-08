@@ -1,0 +1,421 @@
+// Vegetable Green Color Scheme
+$primary: #10b981;
+$primary-light: #34d399;
+$primary-dark: #059669;
+$secondary: #f59e0b;
+$secondary-light: #fbbf24;
+$accent: #84cc16;
+$danger-bg: #fef2f2;
+$danger-text: #dc2626;
+$success: #10b981;
+$text-dark: #1f2937;
+$text-light: #6b7280;
+$input-bg: #f9fafb;
+$input-border: #e5e7eb;
+$input-focus: #10b981;
+$label-text: #6b7280;
+$white: #ffffff;
+$bg-gradient: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+$card-shadow: 0 20px 40px rgba(16, 185, 129, 0.15);
+
+// Font Family
+$font-family: 'Poppins', sans-serif;
+
+// Floating animation
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-20px) rotate(5deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+.login-container {
+  height: 100%;
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: $bg-gradient;
+  font-family: $font-family;
+  position: relative;
+  overflow: hidden;
+
+  .vegetable-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+
+    .floating-icon {
+      position: absolute;
+      color: rgba($primary, 0.2);
+      font-size: 2.5rem;
+      animation: float 6s ease-in-out infinite;
+
+      &.icon-1 {
+        top: 10%;
+        left: 10%;
+        animation-delay: 0s;
+        color: #f59e0b; // Carrot orange
+      }
+
+      &.icon-2 {
+        top: 15%;
+        right: 15%;
+        animation-delay: 1.5s;
+        color: #10b981; // Green
+      }
+
+      &.icon-3 {
+        bottom: 10%;
+        left: 15%;
+        animation-delay: 3s;
+        color: #ef4444; // Tomato red
+      }
+
+      &.icon-4 {
+        bottom: 5%;
+        right: 10%;
+        animation-delay: 4.5s;
+        color: #8b5cf6; // Eggplant purple
+      }
+    }
+  }
+
+  .login-card {
+    background: $white;
+    padding: 3rem 2.5rem 2.5rem;
+    border-radius: 20px;
+    box-shadow: $card-shadow;
+    width: 100%;
+    max-width: 420px;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+    border: 1px solid rgba($primary, 0.1);
+
+    .login-header {
+      margin-bottom: 1.5rem;
+
+      .logo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+        color: $primary;
+
+        .logo-icon {
+          font-size: 2.5rem;
+          margin-right: 0.75rem;
+          color: #f59e0b; // Carrot color
+        }
+
+        .logo-text {
+          font-size: 2rem;
+          font-weight: 700;
+          background: linear-gradient(135deg, #10b981, #f59e0b);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          font-family: $font-family;
+          letter-spacing: -0.5px;
+        }
+      }
+
+      .login-title {
+        font-size: 1.8rem;
+        font-weight: 600;
+        color: $text-dark;
+        margin: 0 0 0.5rem 0;
+        font-family: $font-family;
+        letter-spacing: -0.5px;
+      }
+
+      .login-subtitle {
+        font-size: 0.95rem;
+        font-weight: 400;
+        color: $text-light;
+        margin: 0;
+        opacity: 0.8;
+        font-family: $font-family;
+      }
+    }
+
+    .error-message {
+      background-color: $danger-bg;
+      color: $danger-text;
+      padding: 1rem;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba($danger-text, 0.1);
+      font-family: $font-family;
+
+      .error-icon {
+        margin-right: 0.5rem;
+        font-size: 1rem;
+      }
+
+      .error-text {
+        flex: 1;
+        text-align: left;
+        font-family: $font-family;
+      }
+    }
+
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+
+      .input-group {
+        position: relative;
+        display: flex;
+        align-items: center;
+
+        .form-input {
+          width: 100%;
+          padding: 1rem 3rem 1rem 1rem;
+          border: 2px solid $input-border;
+          border-radius: 12px;
+          outline: none;
+          color: $text-dark;
+          background-color: $input-bg;
+          transition: all 0.3s ease;
+          font-family: $font-family;
+          font-size: 0.95rem;
+          font-weight: 500;
+
+          &:focus,
+          &:not(:placeholder-shown) {
+            border-color: $input-focus;
+            background-color: $white;
+            box-shadow: 0 0 0 3px rgba($input-focus, 0.1);
+          }
+
+          &:focus ~ .form-label,
+          &:not(:placeholder-shown) ~ .form-label {
+            top: -0.1rem;
+            left: 0.75rem;
+            font-size: 0.75rem;
+            color: $input-focus;
+            background-color: $white;
+            padding: 0 0.5rem;
+            font-weight: 600;
+            z-index: 2;
+          }
+
+          &:focus ~ .form-icon {
+            color: $input-focus;
+          }
+
+          &:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+          }
+
+          &:-webkit-autofill,
+          &:-webkit-autofill:hover,
+          &:-webkit-autofill:focus,
+          &:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 30px $input-bg inset !important;
+            box-shadow: 0 0 0 30px $input-bg inset !important;
+            -webkit-text-fill-color: $text-dark !important;
+            border-color: $input-border;
+            font-family: $font-family;
+          }
+        }
+
+        .form-label {
+          position: absolute;
+          left: 1rem;
+          top: 50%;
+          transform: translateY(-50%);
+          color: $label-text;
+          font-size: 0.95rem;
+          font-weight: 500;
+          pointer-events: none;
+          transition: all 0.3s ease;
+          background: transparent;
+          border-radius: 4px;
+          font-family: $font-family;
+        }
+
+        .form-icon {
+          position: absolute;
+          right: 1rem;
+          top: 50%;
+          transform: translateY(-50%);
+          color: $label-text;
+          transition: color 0.3s ease;
+          font-size: 0.9rem;
+
+          &.password-icon {
+            cursor: pointer;
+            &:hover {
+              color: $input-focus;
+            }
+          }
+        }
+      }
+
+      .forgot-password {
+        text-align: right;
+        margin-top: -0.5rem;
+
+        .forgot-link {
+          color: $primary;
+          text-decoration: none;
+          font-size: 0.875rem;
+          font-weight: 500;
+          transition: color 0.3s ease;
+          font-family: $font-family;
+
+          &:hover {
+            color: $primary-dark;
+            text-decoration: underline;
+          }
+        }
+      }
+
+      .login-button {
+        padding: 1rem 2rem;
+        background: linear-gradient(135deg, $primary, $accent);
+        color: $white;
+        font-weight: 600;
+        font-size: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba($primary, 0.3);
+        position: relative;
+        overflow: hidden;
+        font-family: $font-family;
+
+        &:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba($primary, 0.4);
+          background: linear-gradient(135deg, $primary-dark, $primary);
+        }
+
+        &:active:not(:disabled) {
+          transform: translateY(0);
+        }
+
+        &:disabled {
+          background: #a7f3d0;
+          cursor: not-allowed;
+          transform: none;
+          box-shadow: none;
+        }
+
+        .button-loading {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+
+          .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid transparent;
+            border-top: 2px solid $white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+          }
+        }
+      }
+    }
+
+    .login-footer {
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid $input-border;
+
+      .footer-text {
+        font-size: 0.9rem;
+        color: $label-text;
+        margin: 0;
+        font-family: $font-family;
+
+        .signup-link {
+          color: $primary;
+          text-decoration: none;
+          font-weight: 600;
+          transition: color 0.3s ease;
+          font-family: $font-family;
+
+          &:hover {
+            color: $primary-dark;
+            text-decoration: underline;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Spinner animation
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+// Responsive Design
+@media (max-width: 480px) {
+  .login-container {
+    padding: 1rem;
+
+    .login-card {
+      padding: 2rem 1.5rem 1.5rem;
+      max-width: 100%;
+
+      .login-header {
+        .logo {
+          .logo-icon {
+            font-size: 2rem;
+          }
+
+          .logo-text {
+            font-size: 1.6rem;
+          }
+        }
+
+        .login-title {
+          font-size: 1.5rem;
+        }
+      }
+    }
+  }
+}
+
+// Additional vegetable-themed animations
+@keyframes grow {
+  0% { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.login-card {
+  animation: grow 0.6s ease-out;
+}
+
+// Vegetable color variations for icons
+.floating-icon {
+  &.carrot { color: #f59e0b !important; }
+  &.tomato { color: #ef4444 !important; }
+  &.broccoli { color: #10b981 !important; }
+  &.eggplant { color: #8b5cf6 !important; }
+  &.corn { color: #fbbf24 !important; }
+}

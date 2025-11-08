@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs')
 const asyncHandler = require('express-async-handler')
 
 const registerUser = asyncHandler(async (req, res) => {
-  const { username, password, isAdmin } = req.body
+  const { firstname, lastname, username, password, isAdmin } = req.body
 
   if (!username || !password) {
     res.status(400)
@@ -21,6 +21,8 @@ const registerUser = asyncHandler(async (req, res) => {
   const hashedPassword = await bcrypt.hash(password, salt)
 
   const user = await User.create({
+    firstname,
+    lastname,
     username,
     password: hashedPassword,
     isAdmin,
@@ -32,6 +34,8 @@ const registerUser = asyncHandler(async (req, res) => {
 
   res.status(201).json({
     _id: user._id,
+    firstname: user.firstname,
+    lastname: user.lastname,
     username: user.username,
     token,
     isAdmin,
@@ -60,6 +64,8 @@ const loginUser = asyncHandler(async (req, res) => {
 
   const token = jwt.sign({ 
     id: user._id ,
+    firstname: user.firstname,
+    lastname: user.lastname, 
     username: user.username,
     isAdmin: user.isAdmin,
   }, process.env.JWT_SECRET, {
@@ -68,6 +74,8 @@ const loginUser = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     _id: user._id,
+    firstname: user.firstname,
+    lastname: user.lastname,
     username: user.username,
     token,
     isAdmin: user.isAdmin,

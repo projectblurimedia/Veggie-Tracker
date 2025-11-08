@@ -1,6 +1,18 @@
 const mongoose = require('mongoose')
 
 const userSchema = new mongoose.Schema({
+  firstname: {
+    type: String,
+    required: [true, 'First Name is required'],
+    trim: true,
+    minlength: [3, 'First Name must be at least 3 characters long'],
+  },
+  lastname: {
+    type: String,
+    required: [true, 'Last Name is required'],
+    trim: true,
+    minlength: [3, 'Last Name must be at least 3 characters long'],
+  },
   username: {
     type: String,
     required: [true, 'Username is required'],
