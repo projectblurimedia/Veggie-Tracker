@@ -75,23 +75,117 @@
           }
         }
 
-        .owner-avatar {
-          width: 50px;
-          height: 50px;
-          background: rgba(255, 255, 255, 0.2);
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          font-weight: 700;
-          font-size: 1.1rem;
-          border: 2px solid rgba(255, 255, 255, 0.3);
-          transition: all 0.3s ease;
+        // Profile Dropdown Styles
+        .profile {
+          position: relative;
+          cursor: pointer;
 
-          &:hover {
-            transform: scale(1.1);
-            background: rgba(255, 255, 255, 0.3);
+          .initials {
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff;
+            font-weight: 700;
+            font-size: 1rem;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+            &:hover {
+              background: rgba(255, 255, 255, 0.2);
+              transform: scale(1.05);
+            }
+
+            &.active {
+              background: rgba(255, 255, 255, 0.25);
+              border-color: rgba(255, 255, 255, 0.4);
+              transform: scale(1.05);
+            }
+          }
+
+          .profileDropdown {
+            position: absolute;
+            top: 100%;
+            right: 0px;
+            margin-top: 0.75rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 
+              0 10px 40px rgba(0, 0, 0, 0.15),
+              0 0 0 1px rgba(0, 0, 0, 0.05);
+            min-width: 320px;
+            z-index: 1000;
+            overflow: hidden;
+            animation: dropdownFadeIn 0.2s ease-out;
+
+            .profileInfo {
+              display: flex;
+              align-items: flex-start;
+              gap: 0.75rem;
+              padding: 1rem .75rem;
+              background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+              border-bottom: 1px solid #e2e8f0;
+
+              .profileIcon {
+                font-size: 2.5rem;
+                color: #64748b;
+                margin-top: 5px;
+              }
+
+              .profileDetails {
+                .profileName {
+                  font-weight: 600;
+                  color: #2e3f5a;
+                  font-size: 1rem;
+                  text-transform: capitalize;
+                }
+
+                .profileRole {
+                  font-size: 0.75rem;
+                  color: #64748b;
+                }
+              }
+            }
+
+            .dropdownMenu {
+              padding: 0.3rem;
+
+              .menuItem {
+                width: 100%;
+                padding: 0.75rem 1rem;
+                border: none;
+                background: none;
+                text-align: left;
+                cursor: pointer;
+                border-radius: 8px;
+                font-size: 0.875rem;
+                color: #475569;
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+
+                &:hover {
+                  background: #f1f5f9;
+                  color: #1e293b;
+                }
+
+                &.logout {
+                  color: #ef4444;
+                  font-weight: 500;
+
+                  &:hover {
+                    background: #fef2f2;
+                    color: #dc2626;
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -208,7 +302,7 @@
               display: flex;
               align-items: center;
               gap: 0.5rem;
-              min-width: 160px;
+              min-width: 140px;
 
               &:hover {
                 border-color: #cbd5e1;
@@ -229,11 +323,11 @@
               margin-top: 0.5rem;
               background: white;
               border: 1px solid #e2e8f0;
-              border-radius: 10px;
-              padding: 0.5rem;
+              border-radius: 12px;
+              padding: 0.75rem;
               box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
               z-index: 100;
-              min-width: 160px;
+              min-width: 200px;
 
               .dateOption {
                 width: 100%;
@@ -244,8 +338,13 @@
                 font-size: 0.9rem;
                 color: #475569;
                 cursor: pointer;
-                border-radius: 6px;
+                border-radius: 8px;
                 transition: all 0.3s ease;
+                margin-bottom: 0.25rem;
+
+                &:last-child {
+                  margin-bottom: 0;
+                }
 
                 &:hover {
                   background: #f1f5f9;
@@ -256,21 +355,77 @@
                   color: white;
                 }
               }
+
+              .customDateSection {
+                padding: 0.75rem;
+                margin: 0.5rem 0;
+                border-top: 1px solid #e2e8f0;
+                border-bottom: 1px solid #e2e8f0;
+                background: #f8fafc;
+                border-radius: 8px;
+
+                .customDateLabel {
+                  display: block;
+                  font-size: 0.8rem;
+                  font-weight: 600;
+                  color: #475569;
+                  margin-bottom: 0.5rem;
+                  text-transform: uppercase;
+                  letter-spacing: 0.5px;
+                }
+
+                .customDateInput {
+                  padding: 0.75rem;
+                  border: 2px solid #e2e8f0;
+                  border-radius: 8px;
+                  font-size: 0.9rem;
+                  font-family: 'Poppins';
+                  color: #1e293b;
+                  background: white;
+                  transition: all 0.3s ease;
+                  cursor: pointer;
+
+                  &:focus {
+                    outline: none;
+                    border-color: #10b981;
+                    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+                  }
+
+                  &::-webkit-calendar-picker-indicator {
+                    cursor: pointer;
+                    padding: 0.25rem;
+                    border-radius: 4px;
+                    transition: background 0.3s ease;
+
+                    &:hover {
+                      background: #e2e8f0;
+                    }
+                  }
+                }
+              }
             }
           }
         }
       }
 
       .totalCostRow {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+
         .totalCostDisplay {
           display: flex;
           align-items: center;
           justify-content: center;
           background: linear-gradient(135deg, #10b981, #059669);
-          padding: 1rem 1.5rem;
+          padding: .65rem 1.5rem;
           border-radius: 12px;
           color: white;
           box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+          flex: 1;
+          width: 100%;
+          max-height: 50px;
 
           .rupeeIcon {
             font-size: 1.2rem;
@@ -286,6 +441,110 @@
             font-size: 1.1rem;
             margin-right: 0.45rem;
           }
+        }
+
+        .exportBtn {
+          background: linear-gradient(135deg, #10b981, #059669);
+          color: white;
+          border: none;
+          padding: 1rem 1.5rem;
+          height: 50px;
+          border-radius: 12px;
+          font-size: 1rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+          min-width: 140px;
+          justify-content: center;
+
+          &:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+          }
+
+          &:active:not(:disabled) {
+            transform: translateY(0);
+          }
+
+          &:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+          }
+
+          &.loading {
+            background: linear-gradient(135deg, #26bd8b, #16b080);
+            cursor: wait;
+          }
+        }
+      }
+    }
+
+    // Loading State for Customers
+    .loadingCustomers {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem;
+      color: #64748b;
+      font-size: 1rem;
+      font-weight: 500;
+
+      .loadingIcon {
+        margin-right: 0.75rem;
+        font-size: 1.2rem;
+        color: #10b981;
+      }
+    }
+
+    // Empty State
+    .emptyState {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: #64748b;
+
+      .emptyIcon {
+        font-size: 3rem;
+        color: #cbd5e1;
+        margin-bottom: 1rem;
+      }
+
+      h3 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #475569;
+        margin: 0 0 0.5rem 0;
+      }
+
+      p {
+        font-size: 1rem;
+        margin: 0 0 2rem 0;
+        line-height: 1.5;
+      }
+
+      .createOrderBtn {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 10px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
         }
       }
     }
@@ -509,6 +768,17 @@
   }
 }
 
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 // Responsive Design
 @media (max-width: 1200px) {
   .homeContainer {
@@ -543,10 +813,17 @@
             font-size: 1rem;
           }
 
-          .owner-avatar {
-            width: 45px;
-            height: 45px;
-            font-size: 1rem;
+          .profile {
+            .initials {
+              width: 40px;
+              height: 40px;
+              font-size: 0.9rem;
+            }
+
+            .profileDropdown {
+              min-width: 300px;
+              right: -10px;
+            }
           }
         }
       }
@@ -559,34 +836,44 @@
         .headerTop {
 
           h2 {
-            font-size: 1rem;
+            font-size: 1.1rem;
           }
 
-          .dateFilter {            
-            .filterDropdown {              
+          .dateFilter {
+            
+            .filterDropdown {
+              
               .filterTrigger {
-                font-size: .8rem;
-                padding: .7rem .5rem;
+                font-size: 0.85rem;
+                padding: 0.7rem;
+                justify-content: space-between;
+                width: 100%;
+              }
+
+              .datePickerDropdown {
+                width: 100%;
+                right: 0;
               }
             }
           }
         }
 
         .totalCostRow {
-          .totalCostDisplay {
-            padding: .7rem;
-            justify-content: center;
+          gap: 1rem;
 
+          .totalCostDisplay {
             .rupeeIcon {
-              font-size: 1.1rem;
+              font-size: 1rem;
             }
 
             .totalAmount {
-              font-size: 1.3rem;
+              font-size: 1.1rem;
+              font-weight: 700;
             }
 
             .totalLabel {
               font-size: 1rem;
+              margin-right: 0.45rem;
             }
           }
         }
@@ -610,13 +897,13 @@
           gap: 0.6rem;
 
           .optionIcon {
-            width: 40px;
-            height: 40px;
+            width: 32px;
+            height: 32px;
             font-size: 0.9rem;
           }
 
           .optionText {
-            font-size: 1rem;
+            font-size: 0.85rem;
           }
         }
       }
@@ -632,6 +919,19 @@
 
 @media (max-width: 480px) {
   .homeContainer {
+    .header {
+      .header-content {
+        .header-actions {
+          .profile {
+            .profileDropdown {
+              min-width: 280px;
+              right: -15px;
+            }
+          }
+        }
+      }
+    }
+
     .floatingSettings {
       bottom: 1rem;
       right: 1rem;
@@ -643,13 +943,13 @@
           padding: 0.5rem;
 
           .optionIcon {
-            width: 35px;
-            height: 35px;
-            font-size: .75rem;
+            width: 30px;
+            height: 30px;
+            font-size: 0.8rem;
           }
 
           .optionText {
-            font-size: 0.9rem;
+            font-size: 0.8rem;
           }
         }
       }
@@ -686,11 +986,26 @@
   }
 }
 
+// Reduced motion support
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+
+  .profileDropdown {
+    animation: none !important;
+  }
+}
+
 .settingsButton:focus,
 .menuOption:focus,
 .filterTrigger:focus,
 .dateOption:focus,
-.iconBtn:focus {
+.iconBtn:focus,
+.customDateInput:focus,
+.exportBtn:focus,
+.initials:focus {
   outline: 3px solid rgba(16, 185, 129, 0.5);
   outline-offset: 2px;
 }

@@ -6,6 +6,10 @@ import { Login } from "./pages/login/Login"
 import { Owner } from "./pages/owner/Owner"
 import { CreateExpense } from "./pages/createExpense/CreateExpense"
 import { CreateOrder } from "./pages/createOrder/CreateOrder"
+import { Customers } from "./pages/customers/Customers"
+import { Customer } from "./pages/customer/Customer"
+import { OrderDetails } from "./pages/orderDetails/OrderDetails"
+import { ExpenseDetails } from "./pages/expenseDetails/ExpenseDetails"
 
 function App() {
   const [isAuth, setIsAuth] = useState(false)
@@ -69,11 +73,10 @@ function App() {
 
         const payload = JSON.parse(atob(parts[1]))
         const isValid = payload.exp * 1000 > Date.now() - 60000
-
         setIsAuth(isValid)
         setIsAdmin(!!payload.isAdmin)
         setUsername(payload.username || null)
-        setFullname(`${payload.firsname} ${payload.lastname}` || null)
+        setFullname(`${payload.firstname} ${payload.lastname}` || null)
 
         if (!isValid) localStorage.removeItem("token")
       } catch (error) {
@@ -158,7 +161,8 @@ function App() {
           element={
             isAuth && isAdmin ? (
               <Owner
-                setIsAuth={setIsAuth}
+               setIsAuth={setIsAuth}
+                isAdmin={isAdmin}
                 setIsAdmin={setIsAdmin}
                 username={username}
                 setUsername={setUsername}
@@ -172,7 +176,7 @@ function App() {
         />
 
         <Route
-          path="/create"
+          path="/create-order/:orderId?"
           element={
             isAuth ? (
               <CreateOrder />
@@ -183,7 +187,51 @@ function App() {
         />
 
         <Route
-          path="/owner/create"
+          path="/order/:id"
+          element={
+            isAuth ? (
+              <OrderDetails />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+
+        <Route
+          path="/expense/:id"
+          element={
+            isAuth ? (
+              <ExpenseDetails />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+
+        <Route
+          path="/customers"
+          element={
+            isAuth ? (
+              <Customers />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+
+        <Route
+          path="/customers/:id"
+          element={
+            isAuth ? (
+              <Customer />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+
+        <Route
+          path="/owner/create-expense/:expenseId?"
           element={
             isAuth && isAdmin ? (
               <CreateExpense />

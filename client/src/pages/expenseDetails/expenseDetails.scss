@@ -1,0 +1,441 @@
+.expenseDetailsContainer {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: ghostwhite;
+  overflow-x: hidden;
+  position: relative;
+  
+  // Header - Purple background for expenses
+  .expenseHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 2rem;
+    color: #fff;
+    padding: .7rem 1.5rem;
+    background: linear-gradient(90deg, #8b5cf6, #7c3aed);
+    box-shadow: 0 4px 20px rgba(139, 92, 246, 0.3);
+    position: sticky; 
+    top: 0; 
+    z-index: 1000;
+
+    .left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+
+      .backButton {
+        background: rgba(255, 255, 255, 0.15);
+        border: none;
+        color: white;
+        padding: 0.7rem;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.25);
+          transform: scale(1.05);
+        }
+      }
+
+      .expenseHeaderInfo {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+
+        .avatarWithStatus {
+          position: relative;
+          
+          .expenseAvatar {
+            width: 45px;
+            height: 45px;
+            background: linear-gradient(135deg, #ffffff, #f0f0f0);
+            color: #8b5cf6;
+            font-size: 1.1rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+          }
+        }
+
+        .expenseTextInfo {
+          display: flex;
+          flex-direction: column;
+          gap: 0.2rem;
+
+          h2 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #fff;
+            margin: 0;
+            letter-spacing: -0.2px;
+          }
+
+          .expenseMeta {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin: 0;
+            font-weight: 500;
+
+            .metaItem {
+              display: flex;
+              align-items: center;
+              gap: 0.5rem;
+
+              svg {
+                font-size: 0.7rem;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    .right {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+
+      .navIcons {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+
+        .iconBtn {
+          background: rgba(255, 255, 255, 0.1);
+          border: 2px solid rgba(255, 255, 255, 0.2);
+          color: #fff;
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          position: relative;
+          font-size: 1.1rem;
+
+          &:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+          }
+
+          &.editBtn {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+
+            &:hover {
+              background: rgba(255, 255, 255, 0.2);
+              border-color: rgba(255, 255, 255, 0.3);
+            }
+          }
+        }
+      }
+    }
+
+    @media (max-width: 768px) {
+      padding: 0.875rem;
+      gap: 1rem;
+
+      .left {
+        .backButton {
+          width: 34px;
+          height: 34px;
+          padding: 0.6rem;
+          border-radius: 12px;
+          font-size: .75rem;
+        }
+
+        .expenseHeaderInfo {
+          gap: .5rem;
+          .avatarWithStatus {
+            .expenseAvatar {
+              width: 40px;
+              height: 40px;
+              font-size: .9rem;
+            }
+          }
+
+          .expenseTextInfo {
+            h2 {
+              font-size: .85rem;
+            }
+
+            .expenseMeta {
+              font-size: 0.7rem;
+              gap: 0.2rem;
+            }
+          }
+        }
+      }
+
+      .right {
+        gap: 1rem;
+
+        .navIcons {
+          gap: 0.5rem;
+
+          .iconBtn {
+            width: 40px;
+            height: 40px;
+            font-size: 1rem;
+          }
+        }
+      }
+    }
+  }
+
+  // Main Content
+  .expenseContent {
+    flex: 1;
+    padding: 2rem 1.5rem;
+    max-width: 1200px;
+
+    // Expense Summary
+    .expenseSummary {
+      margin-bottom: 2rem;
+
+      .summaryCard {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        border: 2px solid #f1f5f9;
+
+        h3 {
+          margin: 0 0 1.5rem 0;
+          font-size: 1.25rem;
+          font-weight: 600;
+          color: #1e293b;
+        }
+
+        .summaryDetails {
+          .summaryItem {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #f1f5f9;
+
+            &:last-child {
+              border-bottom: none;
+            }
+
+            &.total {
+              .label {
+                font-weight: 700;
+                font-size: 1.1rem;
+              }
+              .value {
+                font-weight: 700;
+                font-size: 1.2rem;
+              }
+            }
+
+            .label {
+              color: #64748b;
+              font-weight: 500;
+            }
+
+            .value {
+              color: #1e293b;
+              font-weight: 600;
+            }
+          }
+        }
+      }
+    }
+
+    // Items Section
+    .itemsSection {
+      h2 {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #1e293b;
+        margin: 0 0 1.5rem 0;
+      }
+
+      .itemsList {
+        display: grid;
+        gap: .5rem;
+
+        .itemCard {
+          background: white;
+          border-radius: 12px;
+          padding: 1.5rem;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+          border: 1px solid #e2e8f0;
+          transition: all 0.3s ease;
+
+          &:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+          }
+
+          .itemHeader {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: .5rem;
+
+            .itemName {
+              margin: 0;
+              font-size: 1.1rem;
+              font-weight: 600;
+              color: #1e293b;
+            }
+
+            .itemPrice {
+              font-size: 1.1rem;
+              font-weight: 700;
+              color: #8b5cf6;
+            }
+          }
+
+          .itemDetails {
+            display: flex;
+            gap: 2rem;
+
+            .quantity, .unitPrice {
+              .label {
+                font-size: 0.85rem;
+                color: #64748b;
+                margin-right: 0.5rem;
+              }
+
+              .value {
+                font-size: 0.95rem;
+                font-weight: 600;
+                color: #1e293b;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Loading State
+  .loadingState {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 50vh;
+
+    .loadingContent {
+      text-align: center;
+
+      .loadingSpinner {
+        width: 50px;
+        height: 50px;
+        border: 3px solid #f1f5f9;
+        border-top: 3px solid #8b5cf6;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+      }
+
+      h3 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1e293b;
+        margin: 0 0 0.5rem 0;
+      }
+
+      p {
+        color: #64748b;
+        margin: 0;
+      }
+    }
+  }
+
+  // Error State
+  .errorState {
+    text-align: center;
+    padding: 4rem 2rem;
+
+    h3 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #1e293b;
+      margin: 0 0 1rem 0;
+    }
+
+    p {
+      color: #64748b;
+      margin: 0 0 2rem 0;
+    }
+
+    .backButton {
+      background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+      }
+    }
+  }
+}
+
+// Animations
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+// Responsive Design
+@media (max-width: 768px) {
+  .expenseDetailsContainer {
+    .expenseContent {
+      padding: 1.5rem 1rem;
+
+      .itemsSection {
+        .itemsList {
+          .itemCard {
+            .itemDetails {
+              flex-direction: column;
+              gap: 0.75rem;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// Focus styles for accessibility
+.backButton:focus,
+.iconBtn:focus {
+  outline: 3px solid rgba(255, 255, 255, 0.5);
+  outline-offset: 2px;
+}

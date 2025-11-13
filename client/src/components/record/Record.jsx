@@ -1,9 +1,6 @@
-import React from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { 
   faEdit,
-  faPlus,
-  faRupeeSign
 } from '@fortawesome/free-solid-svg-icons'
 import './record.scss'
 
@@ -11,7 +8,7 @@ export const Record = ({
   customer, 
   index, 
   onEditClick, 
-  onAddItemsClick 
+  onClick 
 }) => {
   const getInitials = (name) => {
     if (!name) return 'NA'
@@ -29,16 +26,21 @@ export const Record = ({
 
   const statusColor = getStatusColor(customer.totalCost)
 
+  const handleEdit = (e) => {
+    e.stopPropagation()
+    onEditClick(customer.id, e)
+  }
+
   return (
-    <div className="recordCard">
-      {/* Card Header */}
+    <div className="recordCard" onClick={() => onClick(customer.id)}>
+      {/* Card Header - Swapped positions */}
       <div className="cardHeader">
         <div className="headerLeft">
           <div 
-            className="orderIndicator"
+            className="customerAvatar"
             style={{ backgroundColor: statusColor }}
           >
-            # {index + 1}
+            {getInitials(customer.name)}
           </div>
           <div className="customerMainInfo">
             <h3 className="customerName">{customer.name}</h3>
@@ -58,10 +60,10 @@ export const Record = ({
         </div>
         <div className="headerRight">
           <div 
-            className="customerAvatar"
+            className="orderIndicator"
             style={{ backgroundColor: statusColor }}
           >
-            {getInitials(customer.name)}
+            # {index + 1}
           </div>
         </div>
       </div>
@@ -75,9 +77,9 @@ export const Record = ({
                 {item.name}
               </span>
               <div className="itemDetails">
-                <span className="quantity">{item.quantity}</span>
+                <span className="quantity">{item.quantity} Kg</span>
                 <span className="separator">~</span>
-                <span className="cost">₹{item.cost}</span>
+                <span className="cost">₹{item.price}</span>
               </div>
             </div>
           ))}
@@ -89,21 +91,14 @@ export const Record = ({
         </div>
       </div>
 
-      {/* Action Buttons */}
+      {/* Action Buttons - Only Edit Button */}
       <div className="actionButtons">
         <button 
           className="actionBtn editBtn"
-          onClick={(e) => onEditClick(customer.id, e)}
+          onClick={handleEdit}
         >
           <FontAwesomeIcon icon={faEdit} />
-          Edit
-        </button>
-        <button 
-          className="actionBtn addItemsBtn"
-          onClick={(e) => onAddItemsClick(customer.id, e)}
-        >
-          <FontAwesomeIcon icon={faPlus} />
-          Add Items
+          Edit Order
         </button>
       </div>
     </div>

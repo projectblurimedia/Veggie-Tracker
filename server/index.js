@@ -3,6 +3,10 @@ const mongoose = require('mongoose')
 const dotenv = require('dotenv')
 const cors = require('cors')
 const authRoute = require('./routes/authRoute')
+const customerRoute = require('./routes/customerRoute')
+const itemRoute = require('./routes/itemRoute')
+const customerRecordRoute = require('./routes/customerRecordRoute')
+const ownerRecordRoute = require('./routes/ownerRecordRoute')
 
 const app = express()
 dotenv.config({ quiet: true })
@@ -23,6 +27,10 @@ app.use(cors({
 }))
 
 app.use('/server/auth', authRoute)
+app.use('/server/customers', customerRoute)
+app.use('/server/items', itemRoute)
+app.use('/server/orders', customerRecordRoute)
+app.use('/server/owner-records', ownerRecordRoute)
 
 app.use((error, req, res, next) => {
   const errorStatus = error.status || 500

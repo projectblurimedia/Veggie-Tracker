@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './owner.scss'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { 
@@ -11,102 +11,274 @@ import {
   faEdit,
   faPlus,
   faReceipt,
+  faSpinner,
+  faFileExport,
+  faUserCircle,
+  faSignOutAlt,
+  faTimes,
 } from '@fortawesome/free-solid-svg-icons'
 import { useNavigate } from 'react-router-dom'
+import axios from 'axios'
+import { Toast } from '../../components/toast/Toast'
+import * as XLSX from 'xlsx'
 
-export const Owner = () => {
+export const Owner = ({ setIsAuth, isAdmin, setIsAdmin, username, setUsername, fullname, setFullname }) => {
   const navigate = useNavigate()
-  const [owner] = useState({
-    firstName: "Manikanta",
-    lastName: "Yerraguntla"
-  })
-
+  
   const [loading, setLoading] = useState(true)
+  const [exportLoading, setExportLoading] = useState(false)
   const [selectedDate, setSelectedDate] = useState('today')
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [customDate, setCustomDate] = useState('')
+  const [ownerExpenses, setOwnerExpenses] = useState([])
+  const [toasts, setToasts] = useState([])
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
   
-  // Mock owner expenses data - daily wise expenses
-  const [ownerExpenses] = useState([
-    {
-      id: 1,
-      date: "2024-01-15",
-      day: "Today",
-      totalCost: 3250.75,
-      items: [
-        { name: "Vegetables Purchase", quantity: 50, cost: 1250 },
-        { name: "Transportation", quantity: 1, cost: 800 },
-        { name: "Packaging Material", quantity: 200, cost: 750 },
-        { name: "Miscellaneous", quantity: 1, cost: 450.75 }
-      ]
-    },
-    {
-      id: 2,
-      date: "2024-01-14",
-      day: "Yesterday",
-      totalCost: 2890.50,
-      items: [
-        { name: "Vegetables Purchase", quantity: 45, cost: 1100 },
-        { name: "Transportation", quantity: 1, cost: 750 },
-        { name: "Packaging Material", quantity: 180, cost: 680 },
-        { name: "Staff Lunch", quantity: 1, cost: 360.50 }
-      ]
-    },
-    {
-      id: 3,
-      date: "2024-01-13",
-      day: "2 Days Ago",
-      totalCost: 4150.25,
-      items: [
-        { name: "Vegetables Purchase", quantity: 65, cost: 1850 },
-        { name: "Transportation", quantity: 2, cost: 1200 },
-        { name: "Packaging Material", quantity: 250, cost: 850 },
-        { name: "Equipment Maintenance", quantity: 1, cost: 250.25 }
-      ]
-    },
-    {
-      id: 4,
-      date: "2024-01-12",
-      day: "3 Days Ago",
-      totalCost: 2745.00,
-      items: [
-        { name: "Vegetables Purchase", quantity: 40, cost: 950 },
-        { name: "Transportation", quantity: 1, cost: 650 },
-        { name: "Packaging Material", quantity: 150, cost: 600 },
-        { name: "Marketing Materials", quantity: 1, cost: 345 },
-        { name: "Cleaning Supplies", quantity: 1, cost: 200 }
-      ]
-    },
-    {
-      id: 5,
-      date: "2024-01-11",
-      day: "4 Days Ago",
-      totalCost: 3320.00,
-      items: [
-        { name: "Vegetables Purchase", quantity: 55, cost: 1450 },
-        { name: "Transportation", quantity: 1, cost: 900 },
-        { name: "Packaging Material", quantity: 220, cost: 770 },
-        { name: "Utility Bills", quantity: 1, cost: 200 }
-      ]
-    }
-  ])
+  const dropdownRef = useRef(null)
+  const profileRef = useRef(null)
 
-  useEffect(() => {
-    // Simulate loading delay
-    const timer = setTimeout(() => {
-      setLoading(false)
-    }, 1500)
+  // Toast management
+  const showToast = (message, type = 'error') => {
+    const id = Date.now() + Math.random()
+    setToasts(prev => [...prev, { id, message, type }])
     
-    return () => clearTimeout(timer)
-  }, [])
+    setTimeout(() => {
+      removeToast(id)
+    }, 5000)
+  }
 
+  const removeToast = (id) => {
+    setToasts(prev => prev.filter(toast => toast.id !== id))
+  }
+
+  // Get initials from fullname
   const getInitials = (name) => {
     if (!name) return 'NA'
     const nameParts = name.split(' ')
     if (nameParts.length === 1) return nameParts[0].charAt(0).toUpperCase()
     return (nameParts[0].charAt(0) + nameParts[1].charAt(0)).toUpperCase()
   }
+
+  const initials = getInitials(fullname)
+
+  // Handle logout
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem("token")
+      localStorage.removeItem("user")
+      setIsAuth(false) 
+      setIsAdmin(false)
+      setUsername('')
+      setFullname('')
+      setIsDropdownOpen(false)
+      navigate("/login", { replace: true })
+    } catch (err) {
+      console.error("Error during logout:", err)
+      showToast("Failed to logout. Please try again.", "error")
+    }
+  }
+
+  const toggleDropdown = () => {
+    setIsDropdownOpen(!isDropdownOpen)
+  }
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target) &&
+          profileRef.current && !profileRef.current.contains(event.target)) {
+        setIsDropdownOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
+  // Get today's date in YYYY-MM-DD format
+  const getTodayDate = () => {
+    return new Date().toISOString().split('T')[0]
+  }
+
+  // Get yesterday's date in YYYY-MM-DD format
+  const getYesterdayDate = () => {
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+    return yesterday.toISOString().split('T')[0]
+  }
+
+  // Format date for display
+  const formatDateForDisplay = (dateString) => {
+    if (!dateString) return ''
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    })
+  }
+
+  // Get relative day text
+  const getRelativeDay = (dateString) => {
+    const today = new Date().toISOString().split('T')[0]
+    const yesterday = getYesterdayDate()
+    
+    if (dateString === today) return 'Today'
+    if (dateString === yesterday) return 'Yesterday'
+    
+    const date = new Date(dateString)
+    const diffTime = Math.abs(new Date() - date)
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    
+    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
+  }
+
+  useEffect(() => {
+    loadOwnerExpenses()
+  }, [selectedDate, customDate])
+
+  const loadOwnerExpenses = async () => {
+    try {
+      setLoading(true)
+      let response
+
+      if (selectedDate === 'today') {
+        const today = getTodayDate()
+        response = await axios.get(`/owner-records/date/${today}`, {
+          timeout: 10000
+        })
+      } else if (selectedDate === 'yesterday') {
+        const yesterday = getYesterdayDate()
+        response = await axios.get(`/owner-records/date/${yesterday}`, {
+          timeout: 10000
+        })
+      } else if (selectedDate === 'custom' && customDate) {
+        response = await axios.get(`/owner-records/date/${customDate}`, {
+          timeout: 10000
+        })
+      } else if (selectedDate === 'all') {
+        response = await axios.get('/owner-records', {
+          timeout: 10000
+        })
+      } else {
+        // Default to today if no custom date selected
+        const today = getTodayDate()
+        response = await axios.get(`/owner-records/date/${today}`, {
+          timeout: 10000
+        })
+      }
+
+      // Filter for expense records only
+      const expenseRecords = (response.data.data || []).filter(record => 
+        record.recordType === 'EXPENSE'
+      )
+      
+      setOwnerExpenses(expenseRecords)
+      
+    } catch (error) {
+      console.error('Error loading owner expenses:', error)
+      let errorMessage = 'Failed to load expenses'
+
+      if (error.code === 'ECONNABORTED') {
+        errorMessage = 'Request timeout. Please try again.'
+      } else if (error.response) {
+        const { status, data } = error.response
+        if (status === 404) {
+          errorMessage = 'No expenses found for selected date'
+        } else if (status === 500) {
+          errorMessage = 'Server error. Please try again later.'
+        } else if (data.message) {
+          errorMessage = data.message
+        }
+      } else if (error.request) {
+        errorMessage = 'No response from server. Please check your connection.'
+      }
+
+      showToast(errorMessage, 'error')
+      setOwnerExpenses([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleExport = async () => {
+    try {
+      setExportLoading(true)
+
+      // Use filtered expenses if search is active, otherwise all expenses
+      const expensesToExport = searchTerm ? filteredExpenses : ownerExpenses
+      
+      if (expensesToExport.length === 0) {
+        showToast('No expense data to export', 'warning')
+        return
+      }
+
+      // Prepare data for export
+      const exportData = expensesToExport.map(expense => {
+        return {
+          'Date': formatDateForDisplay(expense.date),
+          'Total Amount': expense.totalPrice || 0,
+          'Number of Items': expense.items?.length || 0,
+          'Items Details': expense.items?.map(item => 
+            `${item.name} (${item.quantity}) - ₹${item.price}`
+          ).join('; ') || 'No items',
+          'Description': expense.description || 'N/A',
+          'Record Type': expense.recordType || 'EXPENSE'
+        }
+      })
+
+      // Create workbook and worksheet
+      const wb = XLSX.utils.book_new()
+      const ws = XLSX.utils.json_to_sheet(exportData)
+
+      // Set column widths for better formatting
+      const colWidths = [
+        { wch: 15 }, // Date
+        { wch: 15 }, // Total Amount
+        { wch: 15 }, // Number of Items
+        { wch: 40 }, // Items Details
+        { wch: 20 }, // Description
+        { wch: 12 }  // Record Type
+      ]
+      ws['!cols'] = colWidths
+
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(wb, ws, 'Expenses Data')
+
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().split('T')[0]
+      const fileName = `expenses-${getDateRangeText().toLowerCase().replace(/\s+/g, '-')}-${timestamp}.xlsx`
+      
+      // Download the file
+      XLSX.writeFile(wb, fileName)
+      
+      showToast(`Exported ${expensesToExport.length} expenses to Excel`, 'success')
+      
+    } catch (error) {
+      console.error('Error exporting to Excel:', error)
+      showToast('Failed to export data. Please try again.', 'error')
+    } finally {
+      setExportLoading(false)
+    }
+  }
+
+  // Filter expenses based on search term
+  const filteredExpenses = ownerExpenses.filter(expense => {
+    const searchMatch = !searchTerm || 
+      expense.items?.some(item => 
+        item.name.toLowerCase().includes(searchTerm.toLowerCase())
+      ) ||
+      (expense.description && expense.description.toLowerCase().includes(searchTerm.toLowerCase()))
+    return searchMatch
+  })
+
+  // Calculate total cost for filtered expenses
+  const totalCost = filteredExpenses.reduce((sum, expense) => sum + (expense.totalPrice || 0), 0)
 
   const getStatusColor = (totalCost) => {
     if (totalCost > 4000) return '#ef4444'
@@ -115,69 +287,73 @@ export const Owner = () => {
     return '#10b981'
   }
 
-  const getStatusBackground = (totalCost) => {
-    if (totalCost > 4000) return 'linear-gradient(135deg, #ef444415, #ef444408)'
-    if (totalCost > 3000) return 'linear-gradient(135deg, #f59e0b15, #f59e0b08)'
-    if (totalCost > 2000) return 'linear-gradient(135deg, #3b82f615, #3b82f608)'
-    return 'linear-gradient(135deg, #10b98115, #10b98108)'
-  }
-
-  // Filter expenses based on selected date and search
-  const filteredExpenses = ownerExpenses.filter(expense => {
-    // Date filter
-    let dateMatch = true
-    if (selectedDate === 'today') {
-      dateMatch = expense.date === "2024-01-15"
-    } else if (selectedDate === 'yesterday') {
-      dateMatch = expense.date === "2024-01-14"
-    } else if (selectedDate === 'custom') {
-      dateMatch = expense.date === "2024-01-15" // For demo, show today's for custom
-    }
-
-    // Search filter
-    const searchMatch = !searchTerm || 
-      expense.items.some(item => 
-        item.name.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-
-    return dateMatch && searchMatch
-  })
-
-  // Calculate total cost for filtered expenses
-  const totalCost = filteredExpenses.reduce((sum, expense) => sum + expense.totalCost, 0)
-
   const handleBack = () => {
-    navigate(-1) // Go back to previous page
+    navigate(-1)
   }
 
   const handleDateSelect = (date) => {
     setSelectedDate(date)
     setShowDatePicker(false)
+    
+    // Reset custom date when switching to non-custom option
+    if (date !== 'custom') {
+      setCustomDate('')
+    }
   }
 
-  const handleCustomDateClick = () => {
-    setShowDatePicker(true)
-    // In real app, you would show a date picker here
-    setTimeout(() => {
-      handleDateSelect('custom')
-    }, 500)
+  const handleCustomDateChange = (date) => {
+    setCustomDate(date)
+    setSelectedDate('custom')
+    setShowDatePicker(false)
   }
 
   const handleEditClick = (expenseId, e) => {
     e.stopPropagation()
-    console.log("Edit expense:", expenseId)
-    // Navigate to edit expense page or show edit modal
+    navigate(`/owner/create-expense/${expenseId}`)
   }
 
-  const handleAddExpenseClick = (expenseId, e) => {
-    e.stopPropagation()
-    console.log("Add item to expense:", expenseId)
-    // Show add item modal
+  const handleExpenseClick = (expenseId) => {
+    navigate(`/expense/${expenseId}`)
   }
 
-  if (loading) {
+  const handleSettingsClick = () => {
+    setShowSettings(!showSettings)
+  }
+
+  const handleCreateExpenseClick = () => {
+    navigate('/owner/create-expense')
+    setShowSettings(false)
+  }
+
+  const getDateRangeText = () => {
+    switch (selectedDate) {
+      case 'today':
+        return 'Today'
+      case 'yesterday':
+        return 'Yesterday'
+      case 'custom':
+        return customDate ? formatDateForDisplay(customDate) : 'Pick a Date'
+      case 'all':
+        return 'All Dates'
+      default:
+        return 'Today'
+    }
+  }
+
+  if (loading && ownerExpenses.length === 0) {
     return (
       <div className="ownerContainer">
+        {/* Toast Notifications */}
+        {toasts.map(toast => (
+          <Toast
+            key={toast.id}
+            message={toast.message}
+            type={toast.type}
+            onClose={() => removeToast(toast.id)}
+            position="top-right"
+          />
+        ))}
+        
         <div className="loadingState">
           <div className="loadingContent">
             <div className="loadingSpinner">
@@ -197,6 +373,17 @@ export const Owner = () => {
 
   return (
     <div className='ownerContainer'>
+      {/* Toast Notifications */}
+      {toasts.map(toast => (
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => removeToast(toast.id)}
+          position="top-right"
+        />
+      ))}
+
       {/* Header */}
       <header className="header">
         <div className="header-content">
@@ -214,8 +401,32 @@ export const Owner = () => {
             >
               <FontAwesomeIcon icon={faSearch} />
             </button>
-            <div className="owner-avatar">
-              {getInitials(`${owner.firstName} ${owner.lastName}`)}
+            
+            {/* Profile Dropdown */}
+            <div className="profile" ref={profileRef}>
+              <div 
+                className={`initials ${isDropdownOpen ? 'active' : ''}`}
+                onClick={toggleDropdown}
+              >
+                {initials}
+              </div>
+              {isDropdownOpen && (
+                <div className="profileDropdown" ref={dropdownRef}>
+                  <div className="profileInfo">
+                    <FontAwesomeIcon icon={faUserCircle} className="profileIcon" />
+                    <div className="profileDetails">
+                      <div className="profileName">{fullname || 'User'}</div>
+                      <div className="profileRole">{isAdmin ? 'Owner' : 'Worker'}</div>
+                    </div>
+                  </div>
+                  <div className="dropdownMenu">
+                    <button className="menuItem logout" onClick={handleLogout}>
+                      <FontAwesomeIcon icon={faSignOutAlt} />
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -228,7 +439,7 @@ export const Owner = () => {
             <FontAwesomeIcon icon={faSearch} className="searchIcon" />
             <input
               type="text"
-              placeholder="Search by item name..."
+              placeholder="Search by item name or description..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -256,10 +467,7 @@ export const Owner = () => {
                   onClick={() => setShowDatePicker(!showDatePicker)}
                 >
                   <FontAwesomeIcon icon={faCalendarAlt} />
-                  {selectedDate === 'today' && 'Today'}
-                  {selectedDate === 'yesterday' && 'Yesterday'}
-                  {selectedDate === 'custom' && 'Custom Date'}
-                  {selectedDate === 'all' && 'All Dates'}
+                  {getDateRangeText()}
                   <FontAwesomeIcon icon={faChevronDown} className="chevron" />
                 </button>
                 
@@ -278,17 +486,23 @@ export const Owner = () => {
                       Yesterday
                     </button>
                     <button 
-                      className={`dateOption ${selectedDate === 'custom' ? 'active' : ''}`}
-                      onClick={handleCustomDateClick}
-                    >
-                      Custom Date
-                    </button>
-                    <button 
                       className={`dateOption ${selectedDate === 'all' ? 'active' : ''}`}
                       onClick={() => handleDateSelect('all')}
                     >
                       All Dates
                     </button>
+                    
+                    {/* Custom Date Option */}
+                    <div className="customDateSection">
+                      <label className="customDateLabel">Custom Date</label>
+                      <input
+                        type="date"
+                        value={customDate}
+                        onChange={(e) => handleCustomDateChange(e.target.value)}
+                        className="customDateInput"
+                        max={getTodayDate()}
+                      />
+                    </div>
                   </div>
                 )}
               </div>
@@ -300,96 +514,158 @@ export const Owner = () => {
               <FontAwesomeIcon icon={faRupeeSign} className="rupeeIcon" />
               <span className="totalAmount">{totalCost.toFixed(2)}</span>
             </div>
+            <button 
+              className={`exportBtn ${exportLoading ? 'loading' : ''}`}
+              onClick={handleExport}
+              disabled={exportLoading || filteredExpenses.length === 0}
+            >
+              <FontAwesomeIcon icon={exportLoading ? faSpinner : faFileExport} spin={exportLoading} />
+              {exportLoading ? 'Exporting...' : 'Export'}
+            </button>
           </div>
         </div>
 
-        <div className="expensesGrid">
-          {filteredExpenses.map((expense, index) => {
-            const statusColor = getStatusColor(expense.totalCost)
-            const statusBackground = getStatusBackground(expense.totalCost)
-            
-            return (
-              <div key={expense.id} className="expenseCard">
-                {/* Card Header */}
-                <div className="cardHeader">
-                  <div className="headerLeft">
-                    <div 
-                      className="dayIndicator"
-                      style={{ backgroundColor: statusColor }}
-                    >
-                      {expense.day}
-                    </div>
-                    <div className="expenseMainInfo">
-                      <h3 className="expenseDate">{expense.date}</h3>
-                      <div className="expenseMeta">
-                        <span className="itemCount">
-                          {expense.items.length} items
-                        </span>
-                        <span className="separator">•</span>
-                        <span 
-                          className="totalAmount"
-                          style={{ color: statusColor }}
-                        >
-                          ₹{expense.totalCost.toFixed(0)}
-                        </span>
+        {loading ? (
+          <div className="loadingExpenses">
+            <FontAwesomeIcon icon={faSpinner} spin className="loadingIcon" />
+            <span>Loading expenses...</span>
+          </div>
+        ) : filteredExpenses.length === 0 ? (
+          <div className="emptyState">
+            <FontAwesomeIcon icon={faReceipt} className="emptyIcon" />
+            <h3>No Expenses Found</h3>
+            <p>
+              {selectedDate === 'custom' && !customDate 
+                ? 'Please select a date to view expenses'
+                : `No expenses found for ${getDateRangeText().toLowerCase()}`
+              }
+            </p>
+            {selectedDate !== 'all' && (
+              <button 
+                className="createExpenseBtn"
+                onClick={handleCreateExpenseClick}
+              >
+                <FontAwesomeIcon icon={faPlus} />
+                Create First Expense
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="expensesGrid">
+            {filteredExpenses.map((expense, index) => {
+              const statusColor = getStatusColor(expense.totalPrice || 0)
+              
+              return (
+                <div 
+                  key={expense._id || expense.uniqueId} 
+                  className="expenseCard"
+                  onClick={() => handleExpenseClick(expense._id || expense.uniqueId)}
+                >
+                  {/* Card Header - Swapped positions */}
+                  <div className="cardHeader">
+                    <div className="headerLeft">
+                      <div className="expenseAvatar">
+                        <FontAwesomeIcon icon={faReceipt} />
                       </div>
-                    </div>
-                  </div>
-                  <div className="headerRight">
-                    <div 
-                      className="expenseAvatar"
-                      style={{ backgroundColor: statusColor }}
-                    >
-                      <FontAwesomeIcon icon={faReceipt} />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Items Section */}
-                <div className="itemsSection">
-                  <div className="itemsList">
-                    {expense.items.map((item, itemIndex) => (
-                      <div key={itemIndex} className="itemRow">
-                        <div className="itemInfo">
-                          <span className="itemName">
-                            {item.name}
+                      <div className="expenseMainInfo">
+                        <h3 className="expenseDate">
+                          {formatDateForDisplay(expense.date)}
+                        </h3>
+                        <div className="expenseMeta">
+                          <span className="itemCount">
+                            {expense.items?.length || 0} items
                           </span>
-                          {item.quantity > 1 && (
-                            <span className="quantityBadge">
-                              {item.quantity}
-                            </span>
-                          )}
-                        </div>
-                        <div className="itemDetails">
-                          <span className="cost">₹{item.cost.toFixed(2)}</span>
+                          <span className="separator">•</span>
+                          <span 
+                            className="totalAmount"
+                            style={{ color: statusColor }}
+                          >
+                            ₹{(expense.totalPrice || 0).toFixed(0)}
+                          </span>
                         </div>
                       </div>
-                    ))}
+                    </div>
+                    <div className="headerRight">
+                      <div 
+                        className="dayIndicator"
+                        style={{ backgroundColor: statusColor }}
+                      >
+                        {getRelativeDay(expense.date.split('T')[0])}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Items Section */}
+                  <div className="itemsSection">
+                    <div className="itemsList">
+                      {expense.items?.slice(0, 3).map((item, itemIndex) => (
+                        <div key={itemIndex} className="itemRow">
+                          <div className="itemInfo">
+                            <span className="itemName">
+                              {item.name}
+                            </span>
+                            {item.quantity > 1 && (
+                              <span className="quantityBadge">
+                                {item.quantity}
+                              </span>
+                            )}
+                          </div>
+                          <div className="itemDetails">
+                            <span className="cost">₹{item.price.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      ))}
+                      {expense.items?.length > 3 && (
+                        <div className="moreItems">
+                          +{expense.items.length - 3} more items
+                        </div>
+                      )}
+                    </div>
+                    {expense.description && (
+                      <div className="expenseDescription">
+                        {expense.description}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Action Buttons - Only Edit */}
+                  <div className="actionButtons">
+                    <button 
+                      className="actionBtn editBtn"
+                      onClick={(e) => handleEditClick(expense._id || expense.uniqueId, e)}
+                    >
+                      <FontAwesomeIcon icon={faEdit} />
+                      Edit Expense
+                    </button>
                   </div>
                 </div>
-
-                {/* Action Buttons */}
-                <div className="actionButtons">
-                  <button 
-                    className="actionBtn editBtn"
-                    onClick={(e) => handleEditClick(expense.id, e)}
-                  >
-                    <FontAwesomeIcon icon={faEdit} />
-                    Edit
-                  </button>
-                  <button 
-                    className="actionBtn addItemBtn"
-                    onClick={(e) => handleAddExpenseClick(expense.id, e)}
-                  >
-                    <FontAwesomeIcon icon={faPlus} />
-                    Add Item
-                  </button>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+              )
+            })}
+          </div>
+        )}
       </main>
+
+      {/* Floating Create Button */}
+      <div className={`floatingSettings ${showSettings ? 'active' : ''}`}>
+        <div className="settingsMenu">
+          <div 
+            className="menuOption addOption"
+            onClick={handleCreateExpenseClick}
+          >
+            <div className="optionIcon">
+              <FontAwesomeIcon icon={faPlus} />
+            </div>
+            <span className="optionText">Create Expense</span>
+          </div>
+        </div>
+        
+        <button 
+          className="settingsButton"
+          onClick={handleSettingsClick}
+        >
+          <FontAwesomeIcon icon={showSettings ? faTimes : faPlus} />
+        </button>
+      </div>
     </div>
   )
 }

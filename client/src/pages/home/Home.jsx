@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import './home.scss'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { 
@@ -12,100 +12,51 @@ import {
   faCog,
   faPlus,
   faUsers,
-  faTimes
+  faTimes,
+  faSpinner,
+  faFileExport,
+  faUserCircle,
+  faSignOutAlt
 } from '@fortawesome/free-solid-svg-icons'
 import { Record } from '../../components/record/Record'
 import { useNavigate } from 'react-router-dom'
+import axios from 'axios'
+import { Toast } from '../../components/toast/Toast'
+import * as XLSX from 'xlsx'
 
-export const Home = () => {
+export const Home = ({ setIsAuth, isAdmin, setIsAdmin, username, setUsername, fullname, setFullname }) => {
   const navigate = useNavigate()
   
-  const [owner] = useState({
-    firstName: "Manikanta",
-    lastName: "Yerraguntla"
-  })
-
   const [loading, setLoading] = useState(true)
+  const [exportLoading, setExportLoading] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [selectedDate, setSelectedDate] = useState('today')
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
-  
-  const [customers] = useState([
-    {
-      id: 1,
-      name: "John Doe",
-      totalCost: 1250.75,
-      items: [
-        { name: "Tomatoes", quantity: 5, cost: 250 },
-        { name: "Potatoes", quantity: 10, cost: 300 },
-        { name: "Onions", quantity: 8, cost: 400 },
-        { name: "Carrots", quantity: 3, cost: 150 },
-        { name: "Spinach", quantity: 2, cost: 150.75 }
-      ],
-      date: "2024-01-15"
-    },
-    {
-      id: 2,
-      name: "Jane Smith",
-      totalCost: 890.50,
-      items: [
-        { name: "Bell Peppers", quantity: 4, cost: 200 },
-        { name: "Cucumbers", quantity: 6, cost: 180 },
-        { name: "Broccoli", quantity: 3, cost: 210.50 },
-        { name: "Cauliflower", quantity: 2, cost: 300 }
-      ],
-      date: "2024-01-15"
-    },
-    {
-      id: 3,
-      name: "Mike Johnson",
-      totalCost: 1567.25,
-      items: [
-        { name: "Apples", quantity: 12, cost: 600 },
-        { name: "Oranges", quantity: 8, cost: 400 },
-        { name: "Bananas", quantity: 15, cost: 225.25 },
-        { name: "Grapes", quantity: 5, cost: 342 }
-      ],
-      date: "2024-01-14"
-    },
-    {
-      id: 4,
-      name: "Sarah Wilson",
-      totalCost: 745.00,
-      items: [
-        { name: "Lettuce", quantity: 3, cost: 150 },
-        { name: "Cabbage", quantity: 2, cost: 100 },
-        { name: "Beans", quantity: 4, cost: 200 },
-        { name: "Peas", quantity: 3, cost: 195 },
-        { name: "Corn", quantity: 2, cost: 100 }
-      ],
-      date: "2024-01-15"
-    },
-    {
-      id: 5,
-      name: "Robert Brown",
-      totalCost: 1120.00,
-      items: [
-        { name: "Tomatoes", quantity: 8, cost: 400 },
-        { name: "Onions", quantity: 5, cost: 250 },
-        { name: "Garlic", quantity: 10, cost: 200 },
-        { name: "Ginger", quantity: 3, cost: 270 }
-      ],
-      date: "2024-01-14"
-    }
-  ])
+  const [customers, setCustomers] = useState([])
+  const [customDate, setCustomDate] = useState('')
+  const [toasts, setToasts] = useState([])
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [error, setError] = useState('')
+  const dropdownRef = useRef(null)
+  const profileRef = useRef(null)
 
-  useEffect(() => {
-    // Simulate loading delay
-    const timer = setTimeout(() => {
-      setLoading(false)
-    }, 2000)
+  // Toast management
+  const showToast = (message, type = 'error') => {
+    const id = Date.now() + Math.random()
+    setToasts(prev => [...prev, { id, message, type }])
     
-    return () => clearTimeout(timer)
-  }, [])
+    setTimeout(() => {
+      removeToast(id)
+    }, 5000)
+  }
 
+  const removeToast = (id) => {
+    setToasts(prev => prev.filter(toast => toast.id !== id))
+  }
+
+  // Get initials from fullname
   const getInitials = (name) => {
     if (!name) return 'NA'
     const nameParts = name.split(' ')
@@ -113,27 +64,194 @@ export const Home = () => {
     return (nameParts[0].charAt(0) + nameParts[1].charAt(0)).toUpperCase()
   }
 
-  // Filter customers based on selected date and search
-  const filteredCustomers = customers.filter(customer => {
-    // Date filter
-    let dateMatch = true
-    if (selectedDate === 'today') {
-      dateMatch = customer.date === "2024-01-15"
-    } else if (selectedDate === 'yesterday') {
-      dateMatch = customer.date === "2024-01-14"
-    } else if (selectedDate === 'custom') {
-      dateMatch = customer.date === "2024-01-15" // For demo, show today's for custom
+  const initials = getInitials(fullname)
+
+  // Handle logout
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem("token")
+      localStorage.removeItem("user")
+      setIsAuth(false) 
+      setIsAdmin(false)
+      setUsername('')
+      setFullname('')
+      setIsDropdownOpen(false)
+      navigate("/login", { replace: true })
+    } catch (err) {
+      console.error("Error during logout:", err)
+      setError("Failed to logout. Please try again.")
+      showToast("Failed to logout. Please try again.", "error")
+    }
+  }
+
+  const toggleDropdown = () => {
+    setIsDropdownOpen(!isDropdownOpen)
+  }
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target) &&
+          profileRef.current && !profileRef.current.contains(event.target)) {
+        setIsDropdownOpen(false)
+      }
     }
 
-    // Search filter
-    const searchMatch = !searchTerm || 
-      customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
 
-    return dateMatch && searchMatch
+  // Get today's date in YYYY-MM-DD format
+  const getTodayDate = () => {
+    return new Date().toISOString().split('T')[0]
+  }
+
+  // Get yesterday's date in YYYY-MM-DD format
+  const getYesterdayDate = () => {
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+    return yesterday.toISOString().split('T')[0]
+  }
+
+  useEffect(() => {
+    loadOrders()
+  }, [selectedDate, customDate])
+
+  const loadOrders = async () => {
+    try {
+      setLoading(true)
+      let response
+
+      if (selectedDate === 'today') {
+        const today = getTodayDate()
+        response = await axios.get(`/orders/date-range?startDate=${today}&endDate=${today}`, {
+          timeout: 10000
+        })
+      } else if (selectedDate === 'yesterday') {
+        const yesterday = getYesterdayDate()
+        response = await axios.get(`/orders/date-range?startDate=${yesterday}&endDate=${yesterday}`, {
+          timeout: 10000
+        })
+      } else if (selectedDate === 'custom' && customDate) {
+        response = await axios.get(`/orders/date-range?startDate=${customDate}&endDate=${customDate}`, {
+          timeout: 10000
+        })
+      } else if (selectedDate === 'all') {
+        response = await axios.get('/orders', {
+          timeout: 10000
+        })
+      } else {
+        // Default to today if no custom date selected
+        const today = getTodayDate()
+        response = await axios.get(`/orders/date-range?startDate=${today}&endDate=${today}`, {
+          timeout: 10000
+        })
+      }
+
+      setCustomers(response.data.data || [])
+      
+    } catch (error) {
+      console.error('Error loading orders:', error)
+      let errorMessage = 'Failed to load orders'
+
+      if (error.code === 'ECONNABORTED') {
+        errorMessage = 'Request timeout. Please try again.'
+      } else if (error.response) {
+        const { status, data } = error.response
+        if (status === 404) {
+          errorMessage = 'No orders found for selected date'
+        } else if (status === 500) {
+          errorMessage = 'Server error. Please try again later.'
+        } else if (data.message) {
+          errorMessage = data.message
+        }
+      } else if (error.request) {
+        errorMessage = 'No response from server. Please check your connection.'
+      }
+
+      showToast(errorMessage, 'error')
+      setCustomers([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleExport = async () => {
+    try {
+      setExportLoading(true)
+
+      // Use filtered customers if search is active, otherwise all customers
+      const customersToExport = searchTerm ? filteredCustomers : customers
+      
+      if (customersToExport.length === 0) {
+        showToast('No orders data to export', 'warning')
+        return
+      }
+
+      // Prepare data for export
+      const exportData = customersToExport.map(customer => {
+        return {
+          'Customer Name': customer.customerDetails?.fullName || 'Unknown Customer',
+          'Phone Number': customer.customerDetails?.phone || 'N/A',
+          'Total Amount': customer.totalPrice || 0,
+          'Order Date': formatDateForDisplay(customer.date),
+          'Number of Items': customer.items?.length || 0,
+          'Items Details': customer.items?.map(item => 
+            `${item.name} (${item.quantity} Kg) - ₹${item.price}`
+          ).join('; ') || 'No items',
+        }
+      })
+
+      // Create workbook and worksheet
+      const wb = XLSX.utils.book_new()
+      const ws = XLSX.utils.json_to_sheet(exportData)
+
+      // Set column widths for better formatting
+      const colWidths = [
+        { wch: 20 }, // Order ID
+        { wch: 25 }, // Customer Name
+        { wch: 15 }, // Phone Number
+        { wch: 15 }, // Total Amount
+        { wch: 12 }, // Order Date
+        { wch: 15 }, // Number of Items
+        { wch: 40 }, // Items Details
+        { wch: 12 }, // Status
+        { wch: 12 }, // Created At
+        { wch: 12 }  // Updated At
+      ]
+      ws['!cols'] = colWidths
+
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(wb, ws, 'Orders Data')
+
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().split('T')[0]
+      const fileName = `orders-${getDateRangeText().toLowerCase().replace(/\s+/g, '-')}-${timestamp}.xlsx`
+      
+      // Download the file
+      XLSX.writeFile(wb, fileName)
+      
+      showToast(`Exported ${customersToExport.length} orders to Excel`, 'success')
+      
+    } catch (error) {
+      console.error('Error exporting to Excel:', error)
+      showToast('Failed to export data. Please try again.', 'error')
+    } finally {
+      setExportLoading(false)
+    }
+  }
+
+  // Filter customers based on search term
+  const filteredCustomers = customers.filter(customer => {
+    const searchMatch = !searchTerm || 
+      customer.customerDetails.fullName.toLowerCase().includes(searchTerm.toLowerCase())
+    return searchMatch
   })
 
   // Calculate total cost for filtered customers
-  const totalCost = filteredCustomers.reduce((sum, customer) => sum + customer.totalCost, 0)
+  const totalCost = filteredCustomers.reduce((sum, customer) => sum + customer.totalPrice, 0)
 
   const handleSettingsClick = () => {
     setShowSettings(!showSettings)
@@ -142,29 +260,32 @@ export const Home = () => {
   const handleDateSelect = (date) => {
     setSelectedDate(date)
     setShowDatePicker(false)
+    
+    // Reset custom date when switching to non-custom option
+    if (date !== 'custom') {
+      setCustomDate('')
+    }
   }
 
-  const handleCustomDateClick = () => {
-    setShowDatePicker(true)
-    // In real app, you would show a date picker here
-    setTimeout(() => {
-      handleDateSelect('custom')
-    }, 500)
+  const handleCustomDateChange = (date) => {
+    setCustomDate(date)
+    setSelectedDate('custom')
+    setShowDatePicker(false)
   }
 
   const handleEditClick = (customerId, e) => {
     e.stopPropagation()
-    console.log("Edit customer:", customerId)
+    navigate(`/create-order/${customerId}`)
   }
 
   const handleAddItemsClick = (customerId, e) => {
     e.stopPropagation()
-    console.log("Add items to customer:", customerId)
+    navigate(`/add-items/${customerId}`)
   }
 
   const handleWheelOptionClick = (option) => {
     if (option === 'add') {
-      navigate('/create')
+      navigate('/create-order')
     }
 
     if (option === 'owner') {
@@ -178,9 +299,49 @@ export const Home = () => {
     setShowSettings(false)
   }
 
-  if (loading) {
+  const handleCustomerClick = (customerId) => {
+    navigate(`/order/${customerId}`)
+  }
+
+  const formatDateForDisplay = (dateString) => {
+    if (!dateString) return ''
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    })
+  }
+
+  const getDateRangeText = () => {
+    switch (selectedDate) {
+      case 'today':
+        return 'Today'
+      case 'yesterday':
+        return 'Yesterday'
+      case 'custom':
+        return customDate ? formatDateForDisplay(customDate) : 'Pick a Date'
+      case 'all':
+        return 'All Dates'
+      default:
+        return 'Today'
+    }
+  }
+
+  if (loading && customers.length === 0) {
     return (
       <div className="homeContainer">
+        {/* Toast Notifications */}
+        {toasts.map(toast => (
+          <Toast
+            key={toast.id}
+            message={toast.message}
+            type={toast.type}
+            onClose={() => removeToast(toast.id)}
+            position="top-right"
+          />
+        ))}
+        
         <div className="loadingState">
           <div className="loadingContent">
             <div className="loadingSpinner">
@@ -200,6 +361,17 @@ export const Home = () => {
 
   return (
     <div className='homeContainer'>
+      {/* Toast Notifications */}
+      {toasts.map(toast => (
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => removeToast(toast.id)}
+          position="top-right"
+        />
+      ))}
+
       {/* Header */}
       <header className="header">
         <div className="header-content">
@@ -214,8 +386,32 @@ export const Home = () => {
             >
               <FontAwesomeIcon icon={faSearch} />
             </button>
-            <div className="owner-avatar">
-              {getInitials(`${owner.firstName} ${owner.lastName}`)}
+            
+            {/* Profile Dropdown */}
+            <div className="profile" ref={profileRef}>
+              <div 
+                className={`initials ${isDropdownOpen ? 'active' : ''}`}
+                onClick={toggleDropdown}
+              >
+                {initials}
+              </div>
+              {isDropdownOpen && (
+                <div className="profileDropdown" ref={dropdownRef}>
+                  <div className="profileInfo">
+                    <FontAwesomeIcon icon={faUserCircle} className="profileIcon" />
+                    <div className="profileDetails">
+                      <div className="profileName">{fullname || 'User'}</div>
+                      <div className="profileRole">{isAdmin ? 'Owner' : 'Worker'}</div>
+                    </div>
+                  </div>
+                  <div className="dropdownMenu">
+                    <button className="menuItem logout" onClick={handleLogout}>
+                      <FontAwesomeIcon icon={faSignOutAlt} />
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -256,10 +452,7 @@ export const Home = () => {
                   onClick={() => setShowDatePicker(!showDatePicker)}
                 >
                   <FontAwesomeIcon icon={faCalendarAlt} />
-                  {selectedDate === 'today' && 'Today'}
-                  {selectedDate === 'yesterday' && 'Yesterday'}
-                  {selectedDate === 'custom' && 'Custom Date'}
-                  {selectedDate === 'all' && 'All Dates'}
+                  {getDateRangeText()}
                   <FontAwesomeIcon icon={faChevronDown} className="chevron" />
                 </button>
                 
@@ -277,18 +470,25 @@ export const Home = () => {
                     >
                       Yesterday
                     </button>
-                    <button 
-                      className={`dateOption ${selectedDate === 'custom' ? 'active' : ''}`}
-                      onClick={handleCustomDateClick}
-                    >
-                      Custom Date
-                    </button>
+
                     <button 
                       className={`dateOption ${selectedDate === 'all' ? 'active' : ''}`}
                       onClick={() => handleDateSelect('all')}
                     >
                       All Dates
                     </button>
+                    
+                    {/* Custom Date Option */}
+                    <div className="customDateSection">
+                      <label className="customDateLabel">Custom Date</label>
+                      <input
+                        type="date"
+                        value={customDate}
+                        onChange={(e) => handleCustomDateChange(e.target.value)}
+                        className="customDateInput"
+                        max={getTodayDate()}
+                      />
+                    </div>
                   </div>
                 )}
               </div>
@@ -300,20 +500,63 @@ export const Home = () => {
               <FontAwesomeIcon icon={faRupeeSign} className="rupeeIcon" />
               <span className="totalAmount">{totalCost.toFixed(2)}</span>
             </div>
+            <button 
+              className={`exportBtn ${exportLoading ? 'loading' : ''}`}
+              onClick={handleExport}
+              disabled={exportLoading || filteredCustomers.length === 0}
+            >
+              <FontAwesomeIcon icon={exportLoading ? faSpinner : faFileExport} spin={exportLoading} />
+              {exportLoading ? 'Exporting...' : 'Export'}
+            </button>
           </div>
         </div>
 
-        <div className="customersGrid">
-          {filteredCustomers.map((customer, index) => (
-            <Record
-              key={customer.id}
-              customer={customer}
-              index={index}
-              onEditClick={handleEditClick}
-              onAddItemsClick={handleAddItemsClick}
-            />
-          ))}
-        </div>
+        {loading ? (
+          <div className="loadingCustomers">
+            <FontAwesomeIcon icon={faSpinner} spin className="loadingIcon" />
+            <span>Loading orders...</span>
+          </div>
+        ) : filteredCustomers.length === 0 ? (
+          <div className="emptyState">
+            <FontAwesomeIcon icon={faUser} className="emptyIcon" />
+            <h3>No Orders Found</h3>
+            <p>
+              {selectedDate === 'custom' && !customDate 
+                ? 'Please select a date to view orders'
+                : `No orders found for ${getDateRangeText().toLowerCase()}`
+              }
+            </p>
+            {selectedDate !== 'all' && (
+              <button 
+                className="createOrderBtn"
+                onClick={() => navigate('/create-order')}
+              >
+                <FontAwesomeIcon icon={faPlus} />
+                Create First Order
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="customersGrid">
+            {filteredCustomers.map((customer, index) => (
+              <Record
+                key={customer._id || customer.uniqueId}
+                customer={{
+                  id: customer._id || customer.uniqueId,
+                  name: customer.customerDetails?.fullName || 'Unknown Customer',
+                  totalCost: customer.totalPrice || 0,
+                  items: customer.items || [],
+                  date: customer.date,
+                  phone: customer.customerDetails?.phone
+                }}
+                index={index}
+                onEditClick={handleEditClick}
+                onAddItemsClick={handleAddItemsClick}
+                onClick={handleCustomerClick}
+              />
+            ))}
+          </div>
+        )}
       </main>
 
       {/* Floating Settings */}
@@ -329,15 +572,18 @@ export const Home = () => {
             </div>
             <span className="optionText">Add Order</span>
           </div>
-          <div 
-            className="menuOption ownerOption"
-            onClick={() => handleWheelOptionClick('owner')}
-          >
-            <div className="optionIcon">
-              <FontAwesomeIcon icon={faUser} />
+          {
+            isAdmin && 
+            <div 
+              className="menuOption ownerOption"
+              onClick={() => handleWheelOptionClick('owner')}
+            >
+              <div className="optionIcon">
+                <FontAwesomeIcon icon={faUser} />
+              </div>
+              <span className="optionText">Owner</span>
             </div>
-            <span className="optionText">Owner</span>
-          </div>
+          }
           <div 
             className="menuOption customersOption"
             onClick={() => handleWheelOptionClick('customers')}
