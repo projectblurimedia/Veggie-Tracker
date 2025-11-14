@@ -16,6 +16,9 @@ import {
   faUserCircle,
   faSignOutAlt,
   faTimes,
+  faWeightHanging,
+  faBoxes,
+  faChevronUp
 } from '@fortawesome/free-solid-svg-icons'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
@@ -556,89 +559,15 @@ export const Owner = ({ setIsAuth, isAdmin, setIsAdmin, username, setUsername, f
               const statusColor = getStatusColor(expense.totalPrice || 0)
               
               return (
-                <div 
-                  key={expense._id || expense.uniqueId} 
-                  className="expenseCard"
-                  onClick={() => handleExpenseClick(expense._id || expense.uniqueId)}
-                >
-                  {/* Card Header - Swapped positions */}
-                  <div className="cardHeader">
-                    <div className="headerLeft">
-                      <div className="expenseAvatar">
-                        <FontAwesomeIcon icon={faReceipt} />
-                      </div>
-                      <div className="expenseMainInfo">
-                        <h3 className="expenseDate">
-                          {formatDateForDisplay(expense.date)}
-                        </h3>
-                        <div className="expenseMeta">
-                          <span className="itemCount">
-                            {expense.items?.length || 0} items
-                          </span>
-                          <span className="separator">•</span>
-                          <span 
-                            className="totalAmount"
-                            style={{ color: statusColor }}
-                          >
-                            ₹{(expense.totalPrice || 0).toFixed(0)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="headerRight">
-                      <div 
-                        className="dayIndicator"
-                        style={{ backgroundColor: statusColor }}
-                      >
-                        {getRelativeDay(expense.date.split('T')[0])}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Items Section */}
-                  <div className="itemsSection">
-                    <div className="itemsList">
-                      {expense.items?.slice(0, 3).map((item, itemIndex) => (
-                        <div key={itemIndex} className="itemRow">
-                          <div className="itemInfo">
-                            <span className="itemName">
-                              {item.name}
-                            </span>
-                            {item.quantity > 1 && (
-                              <span className="quantityBadge">
-                                {item.quantity}
-                              </span>
-                            )}
-                          </div>
-                          <div className="itemDetails">
-                            <span className="cost">₹{item.price.toFixed(2)}</span>
-                          </div>
-                        </div>
-                      ))}
-                      {expense.items?.length > 3 && (
-                        <div className="moreItems">
-                          +{expense.items.length - 3} more items
-                        </div>
-                      )}
-                    </div>
-                    {expense.description && (
-                      <div className="expenseDescription">
-                        {expense.description}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Action Buttons - Only Edit */}
-                  <div className="actionButtons">
-                    <button 
-                      className="actionBtn editBtn"
-                      onClick={(e) => handleEditClick(expense._id || expense.uniqueId, e)}
-                    >
-                      <FontAwesomeIcon icon={faEdit} />
-                      Edit Expense
-                    </button>
-                  </div>
-                </div>
+                <ExpenseRecord 
+                  key={expense._id || expense.uniqueId}
+                  expense={expense}
+                  statusColor={statusColor}
+                  onEditClick={handleEditClick}
+                  onClick={handleExpenseClick}
+                  formatDateForDisplay={formatDateForDisplay}
+                  getRelativeDay={getRelativeDay}
+                />
               )
             })}
           </div>
@@ -664,6 +593,146 @@ export const Owner = ({ setIsAuth, isAdmin, setIsAdmin, username, setUsername, f
           onClick={handleSettingsClick}
         >
           <FontAwesomeIcon icon={showSettings ? faTimes : faPlus} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// Expense Record Component (Similar to Record component)
+const ExpenseRecord = ({ 
+  expense, 
+  statusColor, 
+  onEditClick, 
+  onClick,
+  formatDateForDisplay,
+  getRelativeDay
+}) => {
+  const [showAllItems, setShowAllItems] = useState(false)
+
+  const getInitials = (date) => {
+    if (!date) return 'NA'
+    const dateObj = new Date(date)
+    const day = dateObj.getDate()
+    const month = dateObj.toLocaleString('en-US', { month: 'short' })
+    return `${day}${month}`
+  }
+
+  const toggleShowAllItems = (e) => {
+    e.stopPropagation()
+    setShowAllItems(!showAllItems)
+  }
+
+  // Show only 2 items initially, or all if showAllItems is true
+  const itemsToShow = showAllItems ? expense.items : (expense.items?.slice(0, 2) || [])
+  const hasMoreItems = expense.items?.length > 2
+
+  const handleEdit = (e) => {
+    e.stopPropagation()
+    onEditClick(expense._id || expense.uniqueId, e)
+  }
+
+  const handleCardClick = () => {
+    onClick(expense._id || expense.uniqueId)
+  }
+
+  return (
+    <div className="recordCard" onClick={handleCardClick}>
+      {/* Card Header */}
+      <div className="cardHeader">
+        <div className="headerLeft">
+          <div 
+            className="customerAvatar"
+            style={{ backgroundColor: statusColor }}
+          >
+            {getInitials(expense.date)}
+          </div>
+          <div className="customerMainInfo">
+            <h3 className="customerName">{formatDateForDisplay(expense.date)}</h3>
+            <div className="orderMeta">
+              <div className="metaItem itemsCount">
+                <FontAwesomeIcon icon={faBoxes} className="metaIcon" />
+                <span>{expense.items?.length || 0} items</span>
+              </div>
+              <div 
+                className="metaItem paymentStatusHeader"
+                style={{
+                  backgroundColor: `${statusColor}15`,
+                  border: `1.5px solid ${statusColor}`,
+                  color: statusColor
+                }}
+              >
+                <FontAwesomeIcon icon={faReceipt} className="metaIcon" />
+                <span>₹{(expense.totalPrice || 0).toFixed(0)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* Right side with day indicator */}
+        <div className="dayIndicator">
+          {getRelativeDay(expense.date.split('T')[0])}
+        </div>
+      </div>
+
+      {/* Items Section */}
+      <div className="itemsSection">
+        <div className="sectionHeader">
+          <h4 className="sectionTitle">Expense Items</h4>
+          <div className="totalAmountInfo">
+            <span className="totalLabel">Total Amount:</span>
+            <span className="totalAmount">₹{(expense.totalPrice || 0).toFixed(2)}</span>
+          </div>
+        </div>
+        
+        <div className="itemsList">
+          {itemsToShow.map((item, itemIndex) => (
+            <div key={itemIndex} className="itemCard">
+              <div className="itemContent">
+                <div className="itemMain">
+                  <span className="itemName">{item.name}</span>
+                  <div className="itemStats">
+                    <div className="stat">
+                      <FontAwesomeIcon icon={faWeightHanging} className="statIcon" />
+                      <span className="statLabel">Quantity:</span>
+                      <span className="statValue">{item.quantity}</span>
+                    </div>
+                    <div className="stat">                      
+                      <span className="statLabel">Total:</span>
+                      <span className="statValue">{item.price}/-</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+          
+          {/* Show More/Less Button */}
+          {hasMoreItems && (
+            <div className="showMoreButton" onClick={toggleShowAllItems}>
+              <FontAwesomeIcon icon={showAllItems ? faChevronUp : faChevronDown} className="showMoreIcon" />
+              <span className="showMoreText">
+                {showAllItems ? 'Show Less' : `+${expense.items.length - 2} more items`}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Description */}
+        {expense.description && (
+          <div className="expenseDescription">
+            {expense.description}
+          </div>
+        )}
+      </div>
+
+      {/* Action Buttons */}
+      <div className="actionButtons">
+        <button 
+          className="actionBtn editBtn"
+          onClick={handleEdit}
+        >
+          <FontAwesomeIcon icon={faEdit} />
+          Edit Expense
         </button>
       </div>
     </div>

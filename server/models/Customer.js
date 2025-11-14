@@ -10,15 +10,12 @@ const customerSchema = new mongoose.Schema({
   phone: {
     type: String,
     required: [true, 'Phone number is required'],
-    unique: true,
     trim: true
   },
   uniqueId: {
     type: String,
+    required: true,
     unique: true,
-    default: function() {
-      return 'CUST' + Date.now().toString() + Math.random().toString(36).substr(2, 5).toUpperCase()
-    }
   },
   createdAt: {
     type: Date,
@@ -41,15 +38,36 @@ customerSchema.virtual('totalOrders', {
   count: true
 })
 
-// Virtual for total revenue
+// Virtual for total revenue (total amount of all orders)
 customerSchema.virtual('totalRevenue', {
   ref: 'CustomerRecord',
   localField: 'uniqueId',
   foreignField: 'customerDetails.uniqueId',
-  justOne: false,
-  options: { 
-    match: { /* you can add any additional filters here if needed */ } 
-  }
+  justOne: false
+})
+
+// Virtual for total paid amount
+customerSchema.virtual('totalPaid', {
+  ref: 'CustomerRecord',
+  localField: 'uniqueId',
+  foreignField: 'customerDetails.uniqueId',
+  justOne: false
+})
+
+// Virtual for outstanding balance (never negative)
+customerSchema.virtual('outstandingBalance', {
+  ref: 'CustomerRecord',
+  localField: 'uniqueId',
+  foreignField: 'customerDetails.uniqueId',
+  justOne: false
+})
+
+// Virtual for payment status summary
+customerSchema.virtual('paymentSummary').get(function() {
+  if (this.totalRevenue === 0) return 'no-orders'
+  if (this.outstandingBalance <= 0) return 'paid'
+  if (this.outstandingBalance === this.totalRevenue) return 'pending'
+  return 'partial'
 })
 
 // Pre-save middleware
@@ -58,22 +76,120 @@ customerSchema.pre('save', function(next) {
   next()
 })
 
-// Instance method to calculate revenue (alternative approach)
-customerSchema.methods.calculateTotalRevenue = async function() {
+// Static method to get customers with payment summary
+customerSchema.statics.getCustomersWithPaymentSummary = async function() {
+  const customers = await this.aggregate([
+    {
+      $lookup: {
+        from: 'customerrecords',
+        localField: 'uniqueId',
+        foreignField: 'customerDetails.uniqueId',
+        as: 'orders'
+      }
+    },
+    {
+      $addFields: {
+        totalOrders: { $size: '$orders' },
+        totalRevenue: { 
+          $sum: '$orders.totalAmount' 
+        },
+        totalPaid: { 
+          $sum: '$orders.totalPaid' 
+        },
+        // Calculate raw balance first
+        rawBalance: {
+          $sum: '$orders.balanceAmount'
+        }
+      }
+    },
+    {
+      $project: {
+        fullName: 1,
+        phone: 1,
+        uniqueId: 1,
+        createdAt: 1,
+        updatedAt: 1,
+        totalOrders: 1,
+        totalRevenue: { $ifNull: ['$totalRevenue', 0] },
+        totalPaid: { $ifNull: ['$totalPaid', 0] },
+        // Ensure outstanding balance is never negative - use $max to set minimum value as 0
+        outstandingBalance: {
+          $max: [
+            { $ifNull: ['$rawBalance', 0] },
+            0
+          ]
+        },
+        paymentSummary: {
+          $cond: {
+            if: { $eq: ['$totalRevenue', 0] },
+            then: 'no-orders',
+            else: {
+              $cond: {
+                if: { 
+                  $lte: [
+                    { $max: [{ $ifNull: ['$rawBalance', 0] }, 0] },
+                    0
+                  ] 
+                },
+                then: 'paid',
+                else: {
+                  $cond: {
+                    if: { 
+                      $eq: [
+                        { $max: [{ $ifNull: ['$rawBalance', 0] }, 0] },
+                        { $ifNull: ['$totalRevenue', 0] }
+                      ] 
+                    },
+                    then: 'pending',
+                    else: 'partial'
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      $sort: { createdAt: -1 }
+    }
+  ])
+  
+  return customers
+}
+
+// Instance method to calculate payment summary
+customerSchema.methods.getPaymentSummary = async function() {
   const CustomerRecord = mongoose.model('CustomerRecord')
   const records = await CustomerRecord.find({ 
     'customerDetails.uniqueId': this.uniqueId 
   })
   
-  return records.reduce((total, record) => total + (record.totalPrice || 0), 0)
-}
-
-// Instance method to get orders count (alternative approach)
-customerSchema.methods.getTotalOrders = async function() {
-  const CustomerRecord = mongoose.model('CustomerRecord')
-  return await CustomerRecord.countDocuments({ 
-    'customerDetails.uniqueId': this.uniqueId 
-  })
+  const totalRevenue = records.reduce((total, record) => total + (record.totalAmount || 0), 0)
+  const totalPaid = records.reduce((total, record) => total + (record.totalPaid || 0), 0)
+  const rawBalance = records.reduce((total, record) => total + (record.balanceAmount || 0), 0)
+  
+  // Ensure outstanding balance is never negative
+  const outstandingBalance = Math.max(rawBalance, 0)
+  
+  let paymentSummary = 'no-orders'
+  if (totalRevenue > 0) {
+    if (outstandingBalance <= 0) {
+      paymentSummary = 'paid'
+    } else if (outstandingBalance === totalRevenue) {
+      paymentSummary = 'pending'
+    } else {
+      paymentSummary = 'partial'
+    }
+  }
+  
+  return {
+    totalOrders: records.length,
+    totalRevenue,
+    totalPaid,
+    outstandingBalance,
+    paymentSummary
+  }
 }
 
 module.exports = mongoose.model('Customer', customerSchema)

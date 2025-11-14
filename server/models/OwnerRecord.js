@@ -49,6 +49,10 @@ const ownerRecordSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
 })
 
@@ -57,6 +61,36 @@ ownerRecordSchema.pre('save', function(next) {
   this.totalPrice = this.items.reduce((total, item) => {
     return total + (item.price || 0)
   }, 0)
+  
+  // Update the updatedAt field
+  this.updatedAt = Date.now()
+  next()
+})
+
+// Also trigger total price calculation when items are modified via findOneAndUpdate
+ownerRecordSchema.pre('findOneAndUpdate', function(next) {
+  const update = this.getUpdate()
+  
+  // If items are being updated, recalculate totalPrice
+  if (update.$set && update.$set.items) {
+    const totalPrice = update.$set.items.reduce((total, item) => {
+      return total + (item.price || 0)
+    }, 0)
+    update.$set.totalPrice = totalPrice
+  } else if (update.items) {
+    const totalPrice = update.items.reduce((total, item) => {
+      return total + (item.price || 0)
+    }, 0)
+    update.totalPrice = totalPrice
+  }
+  
+  // Update the updatedAt field
+  if (update.$set) {
+    update.$set.updatedAt = Date.now()
+  } else {
+    update.updatedAt = Date.now()
+  }
+  
   next()
 })
 
@@ -73,6 +107,14 @@ ownerRecordSchema.statics.getByDateRange = function(startDate, endDate) {
 // Static method to get records by type
 ownerRecordSchema.statics.getByType = function(recordType) {
   return this.find({ recordType }).sort({ date: -1 })
+}
+
+// Instance method to recalculate total (useful for manual updates)
+ownerRecordSchema.methods.recalculateTotal = function() {
+  this.totalPrice = this.items.reduce((total, item) => {
+    return total + (item.price || 0)
+  }, 0)
+  return this.totalPrice
 }
 
 module.exports = mongoose.model('OwnerRecord', ownerRecordSchema)

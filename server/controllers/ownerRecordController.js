@@ -127,14 +127,63 @@ const getOwnerRecordsByType = async (req, res) => {
   }
 }
 
-// Update owner record
+// Update owner record - FIXED VERSION
 const updateOwnerRecord = async (req, res) => {
   try {
     const { date, items, description, recordType } = req.body
     
+    // Find the record first
+    const record = await OwnerRecord.findById(req.params.id)
+    
+    if (!record) {
+      return res.status(404).json({
+        success: false,
+        message: 'Owner record not found'
+      })
+    }
+
+    // Update fields
+    if (date) record.date = date
+    if (items) record.items = items
+    if (description !== undefined) record.description = description
+    if (recordType) record.recordType = recordType
+
+    // Save the record (this will trigger the pre('save') middleware and recalculate totalPrice)
+    await record.save()
+
+    res.status(200).json({
+      success: true,
+      message: 'Owner record updated successfully',
+      data: record
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error updating owner record',
+      error: error.message
+    })
+  }
+}
+
+// Alternative update method using manual total calculation
+const updateOwnerRecordAlternative = async (req, res) => {
+  try {
+    const { date, items, description, recordType } = req.body
+    
+    // Calculate total price manually if items are provided
+    let updateData = { date, description, recordType }
+    
+    if (items) {
+      const totalPrice = items.reduce((total, item) => {
+        return total + (item.price || 0)
+      }, 0)
+      updateData.items = items
+      updateData.totalPrice = totalPrice
+    }
+
     const record = await OwnerRecord.findByIdAndUpdate(
       req.params.id,
-      { date, items, description, recordType },
+      updateData,
       { new: true, runValidators: true }
     )
 

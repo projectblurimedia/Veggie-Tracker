@@ -11,7 +11,10 @@ import {
   faSpinner,
   faUser,
   faPhone,
-  faPlus
+  faPlus,
+  faCheckCircle,
+  faClock,
+  faExclamationTriangle
 } from '@fortawesome/free-solid-svg-icons'
 import axios from 'axios'
 import { Toast } from '../../components/toast/Toast'
@@ -48,27 +51,18 @@ export const Customer = () => {
       try {
         setLoading(true)
         
-        // Fetch customer details
+        // Fetch customer details - this already includes orders in the response
         const customerResponse = await axios.get(`/customers/${id}`, {
           timeout: 10000
         })
 
         if (customerResponse.data.success) {
-          setCustomer(customerResponse.data.data)
+          const customerData = customerResponse.data.data
+          setCustomer(customerData)
+          // Use the orders that are already included in the customer response
+          setOrders(customerData.orders || [])
         } else {
           throw new Error(customerResponse.data.message || 'Failed to load customer details')
-        }
-
-        // Fetch customer orders using the correct endpoint
-        const ordersResponse = await axios.get(`/orders/customer/${customerResponse.data.data.uniqueId}`, {
-          timeout: 10000
-        })
-
-        if (ordersResponse.data.success) {
-          setOrders(ordersResponse.data.data || [])
-        } else {
-          // If no orders found, set empty array
-          setOrders([])
         }
 
       } catch (error) {
@@ -124,6 +118,10 @@ export const Customer = () => {
     }
   }
 
+  const handleOrderClick = (orderId) => {
+    navigate(`/order/${orderId}`)
+  }
+
   const getInitials = (name) => {
     if (!name) return 'NA'
     const nameParts = name.split(' ')
@@ -136,36 +134,48 @@ export const Customer = () => {
     setShowDatePicker(false)
   }
 
-  const toggleOrderExpansion = (orderId) => {
+  const toggleOrderExpansion = (orderId, e) => {
+    e.stopPropagation() // Prevent navigation when expanding
     setExpandedOrders(prev => ({
       ...prev,
       [orderId]: !prev[orderId]
     }))
   }
 
-  // Format date from ISO to readable format
+  // Get payment status info
+  const getPaymentStatusInfo = (order) => {
+    if (order.paymentStatus === 'paid') {
+      return { 
+        icon: faCheckCircle, 
+        color: '#10b981', 
+        label: 'Paid',
+        bgColor: '#dcfce7'
+      }
+    } else if (order.paymentStatus === 'partial') {
+      return { 
+        icon: faClock, 
+        color: '#f59e0b', 
+        label: `₹${order.balanceAmount?.toFixed(2) || '0.00'} Due`,
+        bgColor: '#fef3c7'
+      }
+    } else {
+      return { 
+        icon: faExclamationTriangle, 
+        color: '#ef4444', 
+        label: `₹${order.balanceAmount?.toFixed(2) || '0.00'} Due`,
+        bgColor: '#fee2e2'
+      }
+    }
+  }
+
+  // Format date to DD/MM/YY format
   const formatDate = (dateString) => {
     if (!dateString) return ''
     const date = new Date(dateString)
-    const day = date.getDate()
-    const month = date.toLocaleString('en-US', { month: 'short' })
-    const year = date.getFullYear()
-    return `${day} ${month}, ${year}`
-  }
-
-  // Get relative time for orders
-  const getRelativeTime = (dateString) => {
-    if (!dateString) return ''
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffTime = Math.abs(now - date)
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    
-    if (diffDays === 1) return 'Yesterday'
-    if (diffDays === 0) return 'Today'
-    if (diffDays < 7) return `${diffDays} days ago`
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`
-    return `${Math.floor(diffDays / 30)} months ago`
+    const day = date.getDate().toString().padStart(2, '0')
+    const month = (date.getMonth() + 1).toString().padStart(2, '0')
+    const year = date.getFullYear().toString().slice(-2)
+    return `${day}/${month}/${year}`
   }
 
   // Filter orders based on selected date
@@ -189,7 +199,7 @@ export const Customer = () => {
     }
   })
 
-  const totalOrdersCost = filteredOrders.reduce((sum, order) => sum + (order.totalPrice || 0), 0)
+  const totalOrdersCost = filteredOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0)
   const totalQuantity = filteredOrders.reduce((sum, order) => {
     return sum + (order.items?.reduce((itemSum, item) => itemSum + (parseFloat(item.quantity) || 0), 0) || 0)
   }, 0)
@@ -288,7 +298,13 @@ export const Customer = () => {
             </div>
           </div>
           <div className="header-actions">
-            {/* Empty space as requested */}
+            <button 
+              className="createOrderBtn header"
+              onClick={handleCreateOrder}
+              title="Create New Order"
+            >
+              <FontAwesomeIcon icon={faPlus} />
+            </button>
           </div>
         </div>
       </header>
@@ -300,8 +316,8 @@ export const Customer = () => {
           <div className="statsRow">
             <div className="statCard">
               <div className="statContent">
-                <div className="statIconWrapper">
-                  <FontAwesomeIcon icon={faShoppingBag} className="statIcon" />
+                <div className="statIconWrapper customers">
+                  <FontAwesomeIcon icon={faUser} className="statIcon" />
                 </div>
                 <div className="statInfo">
                   <span className="statNumber">{customer.totalOrders || 0}</span>
@@ -312,12 +328,26 @@ export const Customer = () => {
             
             <div className="statCard">
               <div className="statContent">
-                <div className="statIconWrapper">
+                <div className="statIconWrapper revenue">
                   <FontAwesomeIcon icon={faRupeeSign} className="statIcon" />
                 </div>
                 <div className="statInfo">
                   <span className="statNumber">₹{(customer.totalRevenue || 0).toLocaleString('en-IN')}</span>
-                  <span className="statLabel">Total Spent</span>
+                  <span className="statLabel">Total Revenue</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="statCard">
+              <div className="statContent">
+                <div className="statIconWrapper outstanding">
+                  <FontAwesomeIcon icon={faShoppingBag} className="statIcon" />
+                </div>
+                <div className="statInfo">
+                  <span className={`statNumber ${customer.outstandingBalance > 0 ? 'outstanding' : ''}`}>
+                    ₹{(customer.outstandingBalance || 0).toLocaleString('en-IN')}
+                  </span>
+                  <span className="statLabel">Balance Amount</span>
                 </div>
               </div>
             </div>
@@ -385,52 +415,75 @@ export const Customer = () => {
 
         <div className="ordersList">
           {filteredOrders.length > 0 ? (
-            filteredOrders.map((order) => (
-              <div key={order._id} className="orderCard">
+            filteredOrders.map((order) => {
+              const paymentStatus = getPaymentStatusInfo(order)
+              
+              return (
                 <div 
-                  className="orderHeader"
-                  onClick={() => toggleOrderExpansion(order._id)}
+                  key={order._id} 
+                  className="orderCard"
+                  onClick={() => handleOrderClick(order._id)}
                 >
-                  <div className="orderHeaderLeft">
-                    <div className="orderDateInfo">
-                      <h3 className="orderDate">{formatDate(order.date)}</h3>
-                      <span className="orderTime">{getRelativeTime(order.date)}</span>
-                    </div>
-                    <div className="orderTotal">
-                      <FontAwesomeIcon icon={faRupeeSign} className="rupeeIcon" />
-                      <span className="totalAmount">{order.totalPrice?.toFixed(2) || '0.00'}</span>
-                    </div>
-                  </div>
-                  <button className="expandButton">
-                    <FontAwesomeIcon 
-                      icon={expandedOrders[order._id] ? faChevronUp : faChevronDown} 
-                      className="expandIcon" 
-                    />
-                  </button>
-                </div>
-                
-                {expandedOrders[order._id] && (
-                  <div className="orderItems">
-                    {order.items && order.items.length > 0 ? (
-                      order.items.map((item, itemIndex) => (
-                        <div key={itemIndex} className="orderItem">
-                          <div className="itemInfo">
-                            <span className="itemName">{item.name}</span>
-                            <span className="itemQuantity">Qty: {item.quantity} Kg</span>
-                          </div>
-                          <div className="itemCost">
-                            <FontAwesomeIcon icon={faRupeeSign} className="rupeeIcon" />
-                            <span className="costAmount">{item.price}</span>
-                          </div>
+                  <div className="orderHeader">
+                    <div className="orderHeaderLeft">
+                      <div className="orderDateInfo">
+                        <h3 className="orderDate">{formatDate(order.date)}</h3>
+                        <div 
+                          className="paymentStatusBadge"
+                          style={{ 
+                            backgroundColor: paymentStatus.bgColor,
+                            color: paymentStatus.color
+                          }}
+                        >
+                          <FontAwesomeIcon 
+                            icon={paymentStatus.icon} 
+                            className="statusIcon" 
+                          />
+                          <span className="statusText">{paymentStatus.label}</span>
                         </div>
-                      ))
-                    ) : (
-                      <div className="noItems">No items in this order</div>
-                    )}
+                      </div>
+                      <div className="orderTotal">
+                        <FontAwesomeIcon icon={faRupeeSign} className="rupeeIcon" />
+                        <span className="totalAmount">{order.totalAmount?.toFixed(2) || '0.00'}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="orderHeaderRight">
+                      <button 
+                        className="expandButton"
+                        onClick={(e) => toggleOrderExpansion(order._id, e)}
+                      >
+                        <FontAwesomeIcon 
+                          icon={expandedOrders[order._id] ? faChevronUp : faChevronDown} 
+                          className="expandIcon" 
+                        />
+                      </button>
+                    </div>
                   </div>
-                )}
-              </div>
-            ))
+                  
+                  {expandedOrders[order._id] && (
+                    <div className="orderItems">
+                      {order.items && order.items.length > 0 ? (
+                        order.items.map((item, itemIndex) => (
+                          <div key={itemIndex} className="orderItem">
+                            <div className="itemInfo">
+                              <span className="itemName">{item.name}</span>
+                              <span className="itemQuantity">Qty: {item.quantity} Kg</span>
+                            </div>
+                            <div className="itemCost">
+                              <FontAwesomeIcon icon={faRupeeSign} className="rupeeIcon" />
+                              <span className="costAmount">{item.price}</span>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="noItems">No items in this order</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })
           ) : (
             <div className="emptyState">
               <FontAwesomeIcon icon={faShoppingBag} className="emptyIcon" />
@@ -466,3 +519,5 @@ export const Customer = () => {
     </div>
   )
 }
+
+export default Customer

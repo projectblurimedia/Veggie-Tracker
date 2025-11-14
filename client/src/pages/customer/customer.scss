@@ -108,8 +108,26 @@
       }
 
       .header-actions {
-        // Empty as requested
-        width: 50px; // To maintain balance
+        .createOrderBtn.header {
+          background: rgba(255, 255, 255, 0.2);
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          color: white;
+          width: 42px;
+          height: 42px;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          font-size: 1rem;
+
+          &:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+          }
+        }
       }
     }
   }
@@ -130,13 +148,13 @@
     margin-bottom: 1.5rem;
 
     .statsRow {
-      display: flex;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 1rem;
       margin-bottom: 1rem;
       width: 100%;
 
       .statCard {
-        flex: 1;
         background: white;
         padding: 1.2rem;
         border-radius: 14px;
@@ -158,12 +176,21 @@
           .statIconWrapper {
             width: 50px;
             height: 50px;
-            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
             border-radius: 50px;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
+
+            &.customers {
+              background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            }
+            &.revenue {
+              background: linear-gradient(135deg, #10b981, #059669);
+            }
+            &.outstanding {
+              background: linear-gradient(135deg, #f59e0b, #d97706);
+            }
 
             .statIcon {
               color: white;
@@ -177,14 +204,18 @@
             gap: 0.2rem;
 
             .statNumber {
-              font-size: 1.4rem;
+              font-size: 1.2rem;
               font-weight: 700;
               color: #1e293b;
               line-height: 1;
+
+              &.outstanding {
+                color: #dc2626;
+              }
             }
 
             .statLabel {
-              font-size: 0.8rem;
+              font-size: 0.7rem;
               color: #64748b;
               font-weight: 600;
               text-transform: uppercase;
@@ -332,10 +363,12 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
       transition: all 0.3s ease;
       overflow: hidden;
+      cursor: pointer;
 
       &:hover {
         border-color: #3b82f6;
         box-shadow: 0 4px 16px rgba(59, 130, 246, 0.12);
+        transform: translateY(-1px);
       }
 
       .orderHeader {
@@ -343,12 +376,7 @@
         justify-content: space-between;
         align-items: center;
         padding: 1.2rem;
-        cursor: pointer;
         transition: all 0.3s ease;
-
-        &:hover {
-          background: #f8fafc;
-        }
 
         .orderHeaderLeft {
           display: flex;
@@ -356,20 +384,38 @@
           justify-content: space-between;
           flex: 1;
           gap: 1rem;
-          margin-right: .7rem;
+          margin-right: 1rem;
 
           .orderDateInfo {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+
             .orderDate {
-              font-size: 1rem;
+              font-size: 1.1rem;
               font-weight: 600;
               color: #1e293b;
-              margin: 0 0 0.2rem 0;
+              margin: 0;
             }
 
-            .orderTime {
+            .paymentStatusBadge {
+              display: inline-flex;
+              align-items: center;
+              gap: 0.4rem;
+              padding: 0.4rem 0.8rem;
+              border-radius: 20px;
               font-size: 0.75rem;
-              color: #64748b;
-              font-weight: 500;
+              font-weight: 600;
+              transition: all 0.3s ease;
+
+              .statusIcon {
+                font-size: 0.7rem;
+              }
+
+              .statusText {
+                font-size: 0.75rem;
+                font-weight: 600;
+              }
             }
           }
 
@@ -378,44 +424,46 @@
             align-items: center;
             gap: 0.4rem;
             background: #f8fafc;
-            padding: 0.4rem 0.8rem;
-            border-radius: 6px;
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
             border: 1px solid #e2e8f0;
 
             .rupeeIcon {
               color: #3b82f6;
-              font-size: 0.8rem;
+              font-size: 0.9rem;
             }
 
             .totalAmount {
-              font-size: 0.9rem;
-              font-weight: 700;
+              font-size: 1rem;
+              font-weight: 600;
               color: #1e293b;
             }
           }
         }
 
-        .expandButton {
-          background: none;
-          border: none;
-          color: #64748b;
-          cursor: pointer;
-          padding: 0.4rem;
-          border-radius: 6px;
-          transition: all 0.3s ease;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
+        .orderHeaderRight {
+          .expandButton {
+            background: none;
+            border: none;
+            color: #64748b;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
 
-          &:hover {
-            background: #e2e8f0;
-            color: #3b82f6;
-          }
+            &:hover {
+              background: #e2e8f0;
+              color: #3b82f6;
+            }
 
-          .expandIcon {
-            font-size: 0.9rem;
-            transition: transform 0.3s ease;
+            .expandIcon {
+              font-size: 0.9rem;
+              transition: transform 0.3s ease;
+            }
           }
         }
       }
@@ -430,11 +478,17 @@
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 0.6rem 0.8rem;
+          padding: 0.7rem 0.9rem;
           background: white;
-          border-radius: 6px;
+          border-radius: 8px;
           border: 1px solid #e2e8f0;
           margin-bottom: 0.5rem;
+          transition: all 0.3s ease;
+
+          &:hover {
+            border-color: #3b82f6;
+            background: #f8fafc;
+          }
 
           &:last-child {
             margin-bottom: 0;
@@ -478,11 +532,11 @@
 
         .noItems {
           text-align: center;
-          padding: 1rem;
+          padding: 1.5rem;
           color: #64748b;
           font-style: italic;
           background: white;
-          border-radius: 6px;
+          border-radius: 8px;
           border: 1px dashed #e2e8f0;
         }
       }
@@ -717,6 +771,14 @@
             }
           }
         }
+
+        .header-actions {
+          .createOrderBtn.header {
+            width: 38px;
+            height: 38px;
+            font-size: 0.9rem;
+          }
+        }
       }
     }
 
@@ -725,7 +787,7 @@
 
       .customerStats {
         .statsRow {
-          flex-direction: column;
+          grid-template-columns: 1fr;
           gap: 0.8rem;
 
           .statCard {
@@ -764,7 +826,6 @@
           }
 
           .dateFilter {
-            
             .filterDropdown {
               .filterTrigger {
                 width: 100%;
@@ -818,19 +879,30 @@
 
               .orderDateInfo {
                 .orderDate {
-                  font-size: 0.9rem;
+                  font-size: 1rem;
                 }
 
-                .orderTime {
+                .paymentStatusBadge {
+                  padding: 0.3rem 0.6rem;
                   font-size: 0.7rem;
                 }
               }
 
               .orderTotal {
-                padding: 0.4rem 0.6rem;
+                padding: 0.5rem 0.8rem;
                 
                 .totalAmount {
-                  font-size: 0.85rem;
+                  font-size: 0.9rem;
+                }
+              }
+            }
+
+            .orderHeaderRight {
+              .expandButton {
+                padding: 0.6rem;
+                
+                .expandIcon {
+                  font-size: 0.8rem;
                 }
               }
             }
@@ -840,7 +912,7 @@
             padding: 0.8rem 1rem;
 
             .orderItem {
-              padding: 0.5rem 0.6rem;
+              padding: 0.6rem 0.8rem;
               
               .itemInfo {
                 .itemName {
@@ -856,27 +928,6 @@
                 .costAmount {
                   font-size: 0.85rem;
                 }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-
-@media (max-width: 480px) {
-  .customerDetailsContainer {
-    .main-content {
-      padding: 0.8rem;
-
-      .ordersList {
-        .orderCard {
-          .orderHeader {
-            .orderHeaderLeft {
-              .orderTotal {
-                // align-self: stretch;
-                // justify-content: center;
               }
             }
           }
@@ -898,6 +949,14 @@
           }
         }
       }
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .customerDetailsContainer {
+    .main-content {
+      padding: 0.8rem;
     }
   }
 }

@@ -362,6 +362,13 @@
       font-weight: 600;
       color: #1e293b;
       margin: 0 0 1.5rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+
+      svg {
+        color: #f59e0b;
+      }
     }
 
     // Section Header with badge
@@ -604,7 +611,7 @@
       background: #f0f9ff;
       border-radius: 6px;
       padding: 1.3rem;
-      border-left: 4px solid #3b82f6;
+      border-left: 4px solid #f59e0b;
       width: 100%;
       box-sizing: border-box;
 
@@ -636,7 +643,7 @@
           gap: 0.25rem;
 
           .customerName {
-            font-weight: 700;
+            font-weight: 600;
             color: #1e293b;
             font-size: 1rem;
           }
@@ -674,6 +681,26 @@
           transform: none;
         }
       }
+    }
+  }
+
+  // Date Lock Info
+  .dateLockInfo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    border-radius: 6px;
+    color: #92400e;
+    font-size: 0.8rem;
+    font-weight: 500;
+
+    svg {
+      color: #d97706;
+      font-size: 0.7rem;
     }
   }
 
@@ -731,7 +758,7 @@
 
   // Input Groups
   .inputGroup {
-    margin-bottom: 1.5rem;
+    margin-bottom: .5rem;
     width: 100%;
     box-sizing: border-box;
 
@@ -741,6 +768,9 @@
       color: #374151;
       margin-bottom: 0.5rem;
       font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
 
     .textInput,
@@ -908,6 +938,132 @@
         
         &:focus {
           box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+        }
+      }
+    }
+  }
+
+  // Beautiful Payment Section
+  .paymentOverview {
+    .paymentStats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+
+      .paymentStat {
+        text-align: center;
+        padding: 1rem;
+        background: #f8fafc;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        transition: all 0.3s ease;
+
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .statLabel {
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: #64748b;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 0.5rem;
+        }
+
+        .statAmount {
+          font-size: 1.1rem;
+          font-weight: 700;
+
+          &.total {
+            color: #1e293b;
+          }
+
+          &.paid {
+            color: #059669;
+          }
+
+          &.pending {
+            color: #dc2626;
+          }
+        }
+      }
+    }
+
+    .paymentProgress {
+      margin-bottom: 1.5rem;
+
+      .progressBar {
+        width: 100%;
+        height: 6px;
+        background: #e2e8f0;
+        border-radius: 3px;
+        overflow: hidden;
+        margin-bottom: 0.5rem;
+
+        .progressFill {
+          height: 100%;
+          background: linear-gradient(90deg, #10b981, #059669);
+          border-radius: 3px;
+          transition: width 0.5s ease;
+        }
+      }
+
+      .progressText {
+        font-size: 0.8rem;
+        color: #64748b;
+        text-align: center;
+        font-weight: 500;
+      }
+    }
+
+    .paymentInputCompact {
+      .paymentInputWrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+        width: 100%;
+
+        .rupeeIcon {
+          position: absolute;
+          left: 1rem;
+          top: 1.15rem;
+          color: #64748b;
+          font-size: 0.9rem;
+          z-index: 2;
+        }
+
+        .paymentInput {
+          width: 100%;
+          padding: 0.85rem 1rem 0.85rem 2.5rem;
+          border: 1.5px solid #e2e8f0;
+          border-radius: 8px;
+          font-size: 0.9rem;
+          font-weight: 500;
+          background: white;
+          transition: all 0.3s ease;
+          font-family: 'Poppins';
+          color: #1e293b;
+          box-sizing: border-box;
+
+          &:focus {
+            outline: none;
+            border-color: #f59e0b;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+          }
+
+          &::placeholder {
+            color: #94a3b8;
+            font-size: 0.85rem;
+          }
+
+          &:disabled {
+            background: #f1f5f9;
+            cursor: not-allowed;
+            opacity: 0.7;
+          }
         }
       }
     }
@@ -1243,6 +1399,39 @@
       }
     }
 
+    // Payment section responsive
+    .paymentOverview {
+      .paymentStats {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+
+        .paymentStat {
+          padding: 0.75rem;
+          
+          .statLabel {
+            font-size: 0.7rem;
+          }
+          
+          .statAmount {
+            font-size: 1rem;
+          }
+        }
+      }
+
+      .paymentInputCompact {
+        .paymentInputWrapper {
+          flex-direction: column;
+          gap: 0.5rem;
+
+          .paymentInput {
+            border-right: 1.5px solid #e2e8f0;
+            border-radius: 8px;
+            padding-right: 1rem;
+          }
+        }
+      }
+    }
+
     // Existing items notification responsive
     .existingItemsNotification {
       padding: 1rem;
@@ -1274,8 +1463,8 @@
             gap: 0.5rem;
             
             .customerAvatar.large {
-              width: 40px;
-              height: 40px;
+              width: 45px;
+              height: 45px;
               font-size: 1rem;
             }
           }
@@ -1335,6 +1524,15 @@
       }
     }
 
+    // Payment section mobile
+    .paymentOverview {
+      .paymentStats {
+        .paymentStat {
+          padding: 0.5rem;
+        }
+      }
+    }
+
     // Responsive improvements for validation messages
     .customerExistsWarning {
       font-size: 0.75rem;
@@ -1358,8 +1556,10 @@
 .dateInput:focus,
 .quantityInput:focus,
 .priceInput:focus,
+.paymentInput:focus,
 .addItemButton:focus,
 .removeItemButton:focus,
+.updatePaymentBtn:focus,
 .submitButton:focus,
 .suggestionItem:focus,
 .clearCustomerButton:focus,
@@ -1379,8 +1579,10 @@
 .dateInput:disabled:focus,
 .quantityInput:disabled:focus,
 .priceInput:disabled:focus,
+.paymentInput:disabled:focus,
 .addItemButton:disabled:focus,
 .removeItemButton:disabled:focus,
+.updatePaymentBtn:disabled:focus,
 .submitButton:disabled:focus,
 .suggestionItem:disabled:focus,
 .clearCustomerButton:disabled:focus,
@@ -1416,7 +1618,8 @@
     .removeItemButton,
     .submitButton,
     .existingItemsNotification,
-    .existingItemsBadge {
+    .existingItemsBadge,
+    .updatePaymentBtn {
       display: none !important;
     }
     

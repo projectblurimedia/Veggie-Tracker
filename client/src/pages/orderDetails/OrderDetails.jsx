@@ -5,7 +5,13 @@ import {
   faChevronLeft,
   faPhone,
   faCalendar,
-  faEdit
+  faEdit,
+  faCheckCircle,
+  faClock,
+  faReceipt,
+  faRupeeSign,
+  faBoxes,
+  faWeightHanging
 } from '@fortawesome/free-solid-svg-icons'
 import axios from 'axios'
 import { Toast } from '../../components/toast/Toast'
@@ -40,12 +46,44 @@ export const OrderDetails = () => {
     return (nameParts[0].charAt(0) + nameParts[1].charAt(0)).toUpperCase()
   }
 
-  // Get status color based on total cost
-  const getStatusColor = (totalCost) => {
-    if (totalCost > 1500) return '#ef4444'
-    if (totalCost > 1000) return '#f59e0b'
-    if (totalCost > 500) return '#3b82f6'
-    return '#10b981'
+  // Get status color based on payment status
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'paid':
+        return '#10b981' // Green
+      case 'partial':
+        return '#f59e0b' // Amber
+      case 'pending':
+        return '#ef4444' // Red
+      default:
+        return '#10b981'
+    }
+  }
+
+  const getPaymentIcon = (status) => {
+    switch (status) {
+      case 'paid':
+        return faCheckCircle
+      case 'partial':
+        return faReceipt
+      case 'pending':
+        return faClock
+      default:
+        return faClock
+    }
+  }
+
+  const getPaymentText = (status, balance) => {
+    switch (status) {
+      case 'paid':
+        return 'Paid'
+      case 'partial':
+        return `₹${balance.toFixed(0)} Due`
+      case 'pending':
+        return `₹${balance.toFixed(0)} Due`
+      default:
+        return balance > 0 ? `₹${balance.toFixed(0)} Due` : 'Paid'
+    }
   }
 
   useEffect(() => {
@@ -115,7 +153,9 @@ export const OrderDetails = () => {
     )
   }
 
-  const statusColor = getStatusColor(order.totalPrice)
+  const statusColor = getStatusColor(order.paymentStatus)
+  const paymentIcon = getPaymentIcon(order.paymentStatus)
+  const paymentText = getPaymentText(order.paymentStatus, order.balanceAmount)
   const initials = getInitials(order.customerDetails?.fullName)
 
   return (
@@ -131,39 +171,28 @@ export const OrderDetails = () => {
         />
       ))}
 
-      {/* Header - Updated with green background and column layout */}
+      {/* Header - Clean design without date */}
       <header className="orderHeader">
-        <div className="left">
-          <button className="backButton" onClick={handleBack}>
-            <FontAwesomeIcon icon={faChevronLeft} />
-          </button>
-          <div className="customerHeaderInfo">
-            <div className="avatarWithStatus">
-              <div 
-                className="customerAvatar"
-                style={{ backgroundColor: statusColor }}
-              >
+        <div className="headerContent">
+          <div className="leftSection">
+            <button className="backButton" onClick={handleBack}>
+              <FontAwesomeIcon icon={faChevronLeft} />
+            </button>
+            <div className="customerInfo">
+              <div className="customerAvatar">
                 {initials}
               </div>
-            </div>
-            <div className="customerTextInfo">
-              <h2>{order.customerDetails?.fullName || 'Unknown Customer'}</h2>
-              <div className="customerMeta">
-                <div className="metaItem">
+              <div className="customerDetails">
+                <h1>{order.customerDetails?.fullName || 'Unknown Customer'}</h1>
+                <div className="phoneInfo">
                   <FontAwesomeIcon icon={faPhone} />
                   <span>{order.customerDetails?.phone || 'N/A'}</span>
-                </div>
-                <div className="metaItem">
-                  <FontAwesomeIcon icon={faCalendar} />
-                  <span>{formatDate(order.date)}</span>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-        
-        <div className="right">
-          <div className="navIcons">  
+          
+          <div className="rightSection">
             <button 
               className="iconBtn editBtn"
               onClick={handleEdit}
@@ -175,47 +204,83 @@ export const OrderDetails = () => {
         </div>
       </header>
 
+      {/* Order Info Cards Below Header */}
+      <div className="orderInfoCards">
+        <div className="infoCard dateCard">
+          <FontAwesomeIcon icon={faCalendar} className="cardIcon" />
+          <div className="cardContent">
+            <span className="cardLabel">Order Date</span>
+            <span className="cardValue">{formatDate(order.date)}</span>
+          </div>
+        </div>
+        
+        <div className="infoCard totalAmountCard">
+          <FontAwesomeIcon icon={faRupeeSign} className="cardIcon" />
+          <div className="cardContent">
+            <span className="cardLabel">Total Amount</span>
+            <span className="cardValue">₹{order.totalAmount?.toFixed(2) || order.totalPrice?.toFixed(2) || '0.00'}</span>
+          </div>
+        </div>
+
+        <div className="infoCard paymentStatusCard">
+          <FontAwesomeIcon icon={paymentIcon} className="cardIcon" style={{ color: statusColor }} />
+          <div className="cardContent">
+            <span className="cardLabel">Payment Status</span>
+            <span className="cardValue" style={{ color: statusColor }}>{paymentText}</span>
+          </div>
+        </div>
+      </div>
+
       {/* Main Content */}
       <main className="orderContent">
-        {/* Order Summary */}
-        <div className="orderSummary">
+        {/* Payment Summary */}
+        <div className="paymentSummary">
           <div className="summaryCard">
-            <h3>Order Summary</h3>
+            <h3>Payment Summary</h3>
             <div className="summaryDetails">
               <div className="summaryItem">
-                <span className="label">Total Items:</span>
-                <span className="value">{order.items?.length || 0}</span>
+                <span className="label">Total Amount:</span>
+                <span className="value">₹{order.totalAmount?.toFixed(2) || order.totalPrice?.toFixed(2) || '0.00'}</span>
               </div>
               <div className="summaryItem">
-                <span className="label">Total Quantity:</span>
-                <span className="value">
-                  {order.items?.reduce((sum, item) => sum + (parseFloat(item.quantity) || 0), 0).toFixed(2)} Kg
-                </span>
+                <span className="label">Amount Paid:</span>
+                <span className="value paid">₹{order.totalPaid?.toFixed(2) || '0.00'}</span>
               </div>
               <div className="summaryItem total">
-                <span className="label">Total Amount:</span>
-                <span className="value" style={{ color: statusColor }}>
-                  ₹{order.totalPrice?.toFixed(2) || '0.00'}
-                </span>
+                <span className="label">Balance Due:</span>
+                <span className="value due">₹{order.balanceAmount?.toFixed(2) || '0.00'}</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Items List */}
+        {/* Items List - Designed like Record component */}
         <div className="itemsSection">
-          <h2>Order Items ({order.items?.length || 0})</h2>
+          <div className="sectionHeader">
+            <h2 className="sectionTitle">Order Items</h2>
+            <div className="itemsCountBadge">
+              <FontAwesomeIcon icon={faBoxes} />
+              <span>{order.items?.length || 0} items</span>
+            </div>
+          </div>
+          
           <div className="itemsList">
             {order.items?.map((item, index) => (
               <div key={index} className="itemCard">
-                <div className="itemHeader">
-                  <h4 className="itemName">{item.name}</h4>
-                  <div className="itemPrice">₹{item.price}</div>
-                </div>
-                <div className="itemDetails">
-                  <div className="quantity">
-                    <span className="label">Quantity:</span>
-                    <span className="value">{item.quantity} Kg</span>
+                <div className="itemContent">
+                  <div className="itemMain">
+                    <span className="itemName">{item.name}</span>
+                    <div className="itemStats">
+                      <div className="stat">
+                        <FontAwesomeIcon icon={faWeightHanging} className="statIcon" />
+                        <span className="statLabel">Quantity:</span>
+                        <span className="statValue">{item.quantity}</span>
+                      </div>
+                      <div className="stat">                      
+                        <span className="statLabel">Total:</span>
+                        <span className="statValue">{item.price}/-</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

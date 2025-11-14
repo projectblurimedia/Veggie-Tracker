@@ -251,7 +251,7 @@ export const Home = ({ setIsAuth, isAdmin, setIsAdmin, username, setUsername, fu
   })
 
   // Calculate total cost for filtered customers
-  const totalCost = filteredCustomers.reduce((sum, customer) => sum + customer.totalPrice, 0)
+  const totalCost = filteredCustomers.reduce((sum, customer) => sum + customer.totalAmount, 0)
 
   const handleSettingsClick = () => {
     setShowSettings(!showSettings)
@@ -276,11 +276,6 @@ export const Home = ({ setIsAuth, isAdmin, setIsAdmin, username, setUsername, fu
   const handleEditClick = (customerId, e) => {
     e.stopPropagation()
     navigate(`/create-order/${customerId}`)
-  }
-
-  const handleAddItemsClick = (customerId, e) => {
-    e.stopPropagation()
-    navigate(`/add-items/${customerId}`)
   }
 
   const handleWheelOptionClick = (option) => {
@@ -544,15 +539,17 @@ export const Home = ({ setIsAuth, isAdmin, setIsAdmin, username, setUsername, fu
                 customer={{
                   id: customer._id || customer.uniqueId,
                   name: customer.customerDetails?.fullName || 'Unknown Customer',
-                  totalCost: customer.totalPrice || 0,
                   items: customer.items || [],
                   date: customer.date,
                   phone: customer.customerDetails?.phone
                 }}
                 index={index}
                 onEditClick={handleEditClick}
-                onAddItemsClick={handleAddItemsClick}
                 onClick={handleCustomerClick}
+                totalAmount={customer.totalAmount || customer.totalPrice}
+                totalPaid={customer.totalPaid || 0}
+                balanceAmount={customer.balanceAmount || 0}
+                paymentStatus={customer.paymentStatus || 'pending'}
               />
             ))}
           </div>

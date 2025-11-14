@@ -42,5 +42,4 @@ router.delete('/:id', deleteOwnerRecord)
 
 router.get('/date/:date', getOwnerRecordsByDate)
 
-
 module.exports = router

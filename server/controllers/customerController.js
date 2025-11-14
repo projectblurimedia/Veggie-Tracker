@@ -1,23 +1,40 @@
 const Customer = require('../models/Customer')
-const CustomerRecord = require('../models/CustomerRecord') // Add this import
+const CustomerRecord = require('../models/CustomerRecord')
 
 // Create new customer
 const createCustomer = async (req, res) => {
   try {
-    const { fullName, phone } = req.body
+    const { fullName, phone, uniqueId } = req.body
 
-    // Check if customer with same phone already exists
-    const existingCustomer = await Customer.findOne({ phone })
-    if (existingCustomer) {
+    if (!uniqueId) {
       return res.status(400).json({
         success: false,
-        message: 'Customer with this phone number already exists'
+        message: 'Unique ID is required'
       })
+    }
+
+    const existingCustomerById = await Customer.findOne({ uniqueId })
+    if (existingCustomerById) {
+      return res.status(400).json({
+        success: false,
+        message: 'Customer with this unique ID already exists'
+      })
+    }
+
+    if (phone && phone.trim() !== '' && phone !== 'Not Provided') {
+      const existingCustomer = await Customer.findOne({ phone })
+      if (existingCustomer) {
+        return res.status(400).json({
+          success: false,
+          message: 'Customer with this phone number already exists'
+        })
+      }
     }
 
     const customer = new Customer({
       fullName,
-      phone
+      phone: phone && phone.trim() !== '' ? phone : 'Not Provided',
+      uniqueId
     })
 
     await customer.save()
@@ -36,50 +53,27 @@ const createCustomer = async (req, res) => {
   }
 }
 
-// Get all customers
+// Get all customers with payment summary
 const getAllCustomers = async (req, res) => {
   try {
-    const customers = await Customer.find().sort({ createdAt: -1 })
-    
-    // Add totalOrders and totalRevenue for each customer
-    const customersWithStats = await Promise.all(
-      customers.map(async (customer) => {
-        const customerObj = customer.toObject()
-        
-        // Get total orders count
-        const totalOrders = await CustomerRecord.countDocuments({ 
-          'customerDetails.uniqueId': customer.uniqueId 
-        })
-        
-        // Get total revenue
-        const orders = await CustomerRecord.find({ 
-          'customerDetails.uniqueId': customer.uniqueId 
-        })
-        const totalRevenue = orders.reduce((total, order) => total + (order.totalPrice || 0), 0)
-        
-        return {
-          ...customerObj,
-          totalOrders,
-          totalRevenue
-        }
-      })
-    )
+    const customers = await Customer.getCustomersWithPaymentSummary()
 
-    const totalCustomers = customersWithStats.length
-    const totalOrders = customersWithStats.reduce((sum, customer) => sum + customer.totalOrders, 0)
-    const totalRevenue = customersWithStats.reduce((sum, customer) => sum + customer.totalRevenue, 0)
+    // Calculate overall stats
+    const stats = {
+      totalCustomers: customers.length,
+      totalOrders: customers.reduce((sum, customer) => sum + customer.totalOrders, 0),
+      totalRevenue: customers.reduce((sum, customer) => sum + customer.totalRevenue, 0),
+      totalOutstanding: customers.reduce((sum, customer) => sum + customer.outstandingBalance, 0),
+      totalPaid: customers.reduce((sum, customer) => sum + customer.totalPaid, 0)
+    }
 
-    
     res.status(200).json({
       success: true,
-      data: customersWithStats,
-      stats: {
-        totalCustomers,
-        totalOrders,
-        totalRevenue
-      }
+      data: customers,
+      stats: stats
     })
   } catch (error) {
+    console.error('Error fetching customers:', error)
     res.status(500).json({
       success: false,
       message: 'Error fetching customers',
@@ -100,40 +94,17 @@ const searchCustomers = async (req, res) => {
       })
     }
 
-    const customers = await Customer.find({
-      $or: [
-        { fullName: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } }
-      ]
-    }).sort({ fullName: 1 })
-
-    // Add totalOrders and totalRevenue for each customer
-    const customersWithStats = await Promise.all(
-      customers.map(async (customer) => {
-        const customerObj = customer.toObject()
-        
-        // Get total orders count
-        const totalOrders = await CustomerRecord.countDocuments({ 
-          'customerDetails.uniqueId': customer.uniqueId 
-        })
-        
-        // Get total revenue
-        const orders = await CustomerRecord.find({ 
-          'customerDetails.uniqueId': customer.uniqueId 
-        })
-        const totalRevenue = orders.reduce((total, order) => total + (order.totalPrice || 0), 0)
-        
-        return {
-          ...customerObj,
-          totalOrders,
-          totalRevenue
-        }
-      })
+    // Get all customers with payment summary and then filter
+    const allCustomers = await Customer.getCustomersWithPaymentSummary()
+    
+    const filteredCustomers = allCustomers.filter(customer => 
+      customer.fullName.toLowerCase().includes(search.toLowerCase()) ||
+      customer.phone.includes(search)
     )
 
     res.status(200).json({
       success: true,
-      data: customersWithStats
+      data: filteredCustomers
     })
   } catch (error) {
     res.status(500).json({
@@ -144,7 +115,7 @@ const searchCustomers = async (req, res) => {
   }
 }
 
-// Get customer by ID
+// Get customer by ID with payment summary
 const getCustomerById = async (req, res) => {
   try {
     const customer = await Customer.findById(req.params.id)
@@ -156,23 +127,18 @@ const getCustomerById = async (req, res) => {
       })
     }
 
-    const customerObj = customer.toObject()
-    
-    // Get total orders count
-    const totalOrders = await CustomerRecord.countDocuments({ 
-      'customerDetails.uniqueId': customer.uniqueId 
-    })
-    
-    // Get total revenue
+    // Get payment summary using instance method
+    const paymentSummary = await customer.getPaymentSummary()
+
+    // Get all orders for this customer
     const orders = await CustomerRecord.find({ 
       'customerDetails.uniqueId': customer.uniqueId 
-    })
-    const totalRevenue = orders.reduce((total, order) => total + (order.totalPrice || 0), 0)
-    
+    }).sort({ date: -1 })
+
     const customerWithStats = {
-      ...customerObj,
-      totalOrders,
-      totalRevenue
+      ...customer.toObject(),
+      ...paymentSummary,
+      orders: orders
     }
 
     res.status(200).json({
@@ -223,7 +189,7 @@ const updateCustomer = async (req, res) => {
 // Delete customer
 const deleteCustomer = async (req, res) => {
   try {
-    const customer = await Customer.findByIdAndDelete(req.params.id)
+    const customer = await Customer.findById(req.params.id)
     
     if (!customer) {
       return res.status(404).json({
@@ -231,6 +197,20 @@ const deleteCustomer = async (req, res) => {
         message: 'Customer not found'
       })
     }
+
+    // Check if customer has orders
+    const orderCount = await CustomerRecord.countDocuments({ 
+      'customerDetails.uniqueId': customer.uniqueId 
+    })
+
+    if (orderCount > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete customer with existing orders. Please delete orders first.'
+      })
+    }
+
+    await Customer.findByIdAndDelete(req.params.id)
 
     res.status(200).json({
       success: true,
@@ -245,11 +225,75 @@ const deleteCustomer = async (req, res) => {
   }
 }
 
+// Get customers by payment status
+const getCustomersByPaymentStatus = async (req, res) => {
+  try {
+    const { status } = req.params
+
+    const validStatuses = ['paid', 'partial', 'pending', 'no-orders']
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid payment status'
+      })
+    }
+
+    const customers = await Customer.getCustomersWithPaymentSummary()
+    
+    const filteredCustomers = customers.filter(customer => 
+      customer.paymentSummary === status
+    )
+
+    const stats = {
+      totalCustomers: filteredCustomers.length,
+      totalOrders: filteredCustomers.reduce((sum, customer) => sum + customer.totalOrders, 0),
+      totalRevenue: filteredCustomers.reduce((sum, customer) => sum + customer.totalRevenue, 0),
+      totalOutstanding: filteredCustomers.reduce((sum, customer) => sum + customer.outstandingBalance, 0)
+    }
+
+    res.status(200).json({
+      success: true,
+      data: filteredCustomers,
+      stats: stats
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching customers by payment status',
+      error: error.message
+    })
+  }
+}
+
+// Get orders by customer uniqueId
+const getOrdersByCustomer = async (req, res) => {
+  try {
+    const { uniqueId } = req.params
+
+    const orders = await CustomerRecord.find({ 
+      'customerDetails.uniqueId': uniqueId 
+    }).sort({ date: -1 })
+
+    res.status(200).json({
+      success: true,
+      data: orders
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching customer orders',
+      error: error.message
+    })
+  }
+}
+
 module.exports = {
   createCustomer,
   getAllCustomers,
   searchCustomers,
   getCustomerById,
   updateCustomer,
-  deleteCustomer
+  deleteCustomer,
+  getCustomersByPaymentStatus,
+  getOrdersByCustomer,
 }

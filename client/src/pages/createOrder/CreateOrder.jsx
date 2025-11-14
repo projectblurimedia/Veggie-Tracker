@@ -16,7 +16,12 @@ import {
   faEdit,
   faCarrot,
   faHistory,
-  faCopy
+  faCopy,
+  faCreditCard,
+  faMoneyBillWave,
+  faWallet,
+  faCheckCircle,
+  faClock
 } from '@fortawesome/free-solid-svg-icons'
 import axios from 'axios'
 import { Toast } from '../../components/toast/Toast'
@@ -69,7 +74,11 @@ export const CreateOrder = () => {
   const [hasExistingItems, setHasExistingItems] = useState(false)
 
   // Reload trigger for date changes
-  const [reloadTrigger, setReloadTrigger] = useState(0)
+  const [reloadTrigger, setRelloadTrigger] = useState(0)
+
+  // Payment states
+  const [totalPaid, setTotalPaid] = useState(0)
+  const [paymentAmount, setPaymentAmount] = useState('')
 
   // Form state
   const [formData, setFormData] = useState({
@@ -82,6 +91,7 @@ export const CreateOrder = () => {
   })
 
   const [totalAmount, setTotalAmount] = useState(0)
+  const [balanceAmount, setBalanceAmount] = useState(0)
 
   // Toast management
   const showToast = (message, type = 'error') => {
@@ -100,14 +110,15 @@ export const CreateOrder = () => {
   // Debounced search term for local filtering
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
-  // Calculate total amount whenever items change
+  // Calculate total amount and balance whenever items or totalPaid changes
   useEffect(() => {
     const total = formData.items.reduce((sum, item) => {
       const price = parseFloat(item.price) || 0
       return sum + price
     }, 0)
     setTotalAmount(total)
-  }, [formData.items])
+    setBalanceAmount(total - totalPaid)
+  }, [formData.items, totalPaid])
 
   // Check if customer name already exists (with trim fix)
   const customerExists = allCustomers.some(customer => 
@@ -194,6 +205,9 @@ export const CreateOrder = () => {
           ...prev,
           items: itemsWithIds
         }))
+
+        // Set payment data
+        setTotalPaid(order.totalPaid || 0)
         
       }
     } catch (error) {
@@ -240,6 +254,11 @@ export const CreateOrder = () => {
           ...prev,
           items: newItems
         }))
+
+        // Set payment data from existing order
+        if (existingOrders[0]) {
+          setTotalPaid(existingOrders[0].totalPaid || 0)
+        }
         
       } else {
         setHasExistingItems(false)
@@ -250,6 +269,7 @@ export const CreateOrder = () => {
             items: [{ id: 1, name: '', quantity: '', price: '', total: 0 }]
           }))
         }
+        setTotalPaid(0)
       }
       
     } catch (error) {
@@ -260,8 +280,14 @@ export const CreateOrder = () => {
     }
   }
 
-  // Handle date change - reset items and check for existing items for new date
+  // Handle date change - only for new orders, not for edit mode
   const handleDateChange = (newDate) => {
+    if (isEditMode) {
+      // Don't allow date change in edit mode
+      showToast('Cannot change date in edit mode', 'warning')
+      return
+    }
+    
     // Update the date and reset items immediately
     setFormData(prev => ({ 
       ...prev, 
@@ -272,10 +298,12 @@ export const CreateOrder = () => {
     // Reset existing items state
     setHasExistingItems(false)
     setExistingItems([])
+    setTotalPaid(0)
+    setPaymentAmount('')
     
     // Trigger reload after state updates
     setTimeout(() => {
-      setReloadTrigger(prev => prev + 1)
+      setRelloadTrigger(prev => prev + 1)
     }, 50)
   }
 
@@ -297,10 +325,12 @@ export const CreateOrder = () => {
     setShowSuggestions(false)
     setHasExistingItems(false)
     setExistingItems([])
+    setTotalPaid(0)
+    setPaymentAmount('')
     
     // Trigger reload after state updates
     setTimeout(() => {
-      setReloadTrigger(prev => prev + 1)
+      setRelloadTrigger(prev => prev + 1)
     }, 50)
     
     showToast(`Selected customer: ${customer.fullName}`, 'success')
@@ -318,6 +348,8 @@ export const CreateOrder = () => {
     setSearchTerm('')
     setExistingItems([])
     setHasExistingItems(false)
+    setTotalPaid(0)
+    setPaymentAmount('')
   }
 
   const handleNewCustomerOption = () => {
@@ -326,6 +358,18 @@ export const CreateOrder = () => {
       return
     }
     setShowNewCustomerModal(true)
+  }
+
+  const generateUniqueId = () => {
+    const timestamp = Date.now().toString(36);
+    const randomStr = Math.random().toString(36).substr(2, 5);
+    return `CUST_${timestamp}_${randomStr}`.toUpperCase();
+  }
+
+  const generateOrderUniqueId = () => {
+    const timestamp = Date.now().toString(36);
+    const randomStr = Math.random().toString(36).substr(2, 5);
+    return `ORD_${timestamp}_${randomStr}`.toUpperCase();
   }
 
   const handleCreateNewCustomer = async () => {
@@ -342,9 +386,12 @@ export const CreateOrder = () => {
       }
 
       setSearchLoading(true)
+
+      const uniqueId = generateUniqueId()
       const newCustomer = {
         fullName: searchTerm.trim(),
-        phone: newCustomerPhone.trim() || 'Not Provided'
+        phone: newCustomerPhone.trim() || 'Not Provided',
+        uniqueId: uniqueId
       }
       
       const response = await axios.post('/customers', newCustomer)
@@ -366,10 +413,12 @@ export const CreateOrder = () => {
       setShowSuggestions(false)
       setHasExistingItems(false)
       setExistingItems([])
+      setTotalPaid(0)
+      setPaymentAmount('')
       
       // Trigger reload after state updates
       setTimeout(() => {
-        setReloadTrigger(prev => prev + 1)
+        setRelloadTrigger(prev => prev + 1)
       }, 50)
       
       showToast(`Customer "${createdCustomer.fullName}" created successfully!`, 'success')
@@ -511,6 +560,52 @@ export const CreateOrder = () => {
     }
   }
 
+  // Payment handling - FIXED: Properly update payment before form submission
+  const handlePaymentAmountChange = (amount) => {
+    setPaymentAmount(amount)
+  }
+
+  // Update total paid - COMPLETELY REWRITTEN: Use the dedicated payment endpoint
+  const updatePayment = async (orderIdToUpdate, payment) => {
+    try {
+      if (!payment || isNaN(payment) || payment < 0) {
+        showToast('Please enter a valid payment amount', 'error')
+        return false
+      }
+
+      if (payment > totalAmount) {
+        showToast('Payment amount cannot exceed total amount', 'error')
+        return false
+      }
+
+      // Use the dedicated payment endpoint - this is the key fix
+      const response = await axios.post(`/orders/${orderIdToUpdate}/payment`, {
+        amount: payment
+      })
+      
+      if (response.data.success) {
+        const updatedOrder = response.data.data
+        
+        // Update local state with the calculated values from database
+        setTotalPaid(updatedOrder.totalPaid)
+        setPaymentAmount('')
+        
+        showToast(`Payment updated to ₹${updatedOrder.totalPaid.toFixed(2)}`, 'success')
+        return true
+      }
+      
+    } catch (error) {
+      console.error('Error updating payment:', error)
+      if (error.response?.data?.message) {
+        showToast(error.response.data.message, 'error')
+      } else {
+        showToast('Failed to update payment. Please try again.', 'error')
+      }
+      return false
+    }
+    return false
+  }
+
   // Validate form before submission
   const validateForm = () => {
     setShowValidation(true)
@@ -582,7 +677,11 @@ export const CreateOrder = () => {
         return sum + (parseFloat(item.price) || 0)
       }, 0)
 
+      // Generate unique order ID
+      const orderUniqueId = generateOrderUniqueId()
+
       const orderData = {
+        uniqueId: orderUniqueId,
         customerDetails: {
           _id: selectedCustomer._id,
           uniqueId: selectedCustomer.uniqueId,
@@ -595,17 +694,25 @@ export const CreateOrder = () => {
           quantity: parseFloat(item.quantity) || 0,
           price: parseFloat(item.price) || 0
         })),
-        totalPrice: calculatedTotal
+        totalAmount: calculatedTotal,
+        totalPaid: totalPaid, // Use current state value
+        balanceAmount: calculatedTotal - totalPaid
       }
 
-      await axios.post('/orders', orderData)
+      const response = await axios.post('/orders', orderData)
+      const createdOrder = response.data.data
+      
+      // If payment amount is entered for new order, update payment after creation
+      if (paymentAmount && paymentAmount !== '0' && parseFloat(paymentAmount) > 0) {
+        await updatePayment(createdOrder._id, parseFloat(paymentAmount))
+      }
       
       showToast('Order created successfully!', 'success')
       
       // Navigate after a short delay to show success message
       setTimeout(() => {
         navigate('/')
-      }, 1500)
+      }, 500)
       
     } catch (error) {
       console.error('Error creating order:', error)
@@ -645,25 +752,35 @@ export const CreateOrder = () => {
           quantity: parseFloat(item.quantity) || 0,
           price: parseFloat(item.price) || 0
         })),
-        totalPrice: calculatedTotal
+        totalAmount: calculatedTotal,
+        totalPaid: totalPaid, // Use current state value
+        balanceAmount: calculatedTotal - totalPaid
       }
 
+      let orderIdToUpdate;
+      
       // If we have existing items but not in edit mode, we need to find the order ID
       if (hasExistingItems && !isEditMode && existingItems.length > 0) {
         // Use the first existing order's ID to update
-        const orderIdToUpdate = existingItems[0].orderId
+        orderIdToUpdate = existingItems[0].orderId
         await axios.put(`/orders/${orderIdToUpdate}`, orderData)
         showToast('Order updated successfully!', 'success')
       } else if (isEditMode) {
         // Regular edit mode
+        orderIdToUpdate = orderId
         await axios.put(`/orders/${orderId}`, orderData)
         showToast('Order updated successfully!', 'success')
+      }
+
+      // If payment amount is entered, update payment after order update
+      if (paymentAmount && paymentAmount !== '0' && parseFloat(paymentAmount) > 0 && orderIdToUpdate) {
+        await updatePayment(orderIdToUpdate, parseFloat(paymentAmount))
       }
       
       // Navigate after a short delay to show success message
       setTimeout(() => {
         navigate('/')
-      }, 1500)
+      }, 500)
       
     } catch (error) {
       console.error('Error updating order:', error)
@@ -675,7 +792,7 @@ export const CreateOrder = () => {
     }
   }
 
-  // Form submission handler
+  // Form submission handler - FIXED: Simplified approach
   const handleSubmit = async (e) => {
     e.preventDefault()
     
@@ -687,6 +804,7 @@ export const CreateOrder = () => {
     setLoading(true)
 
     try {
+      // For existing orders, we need to update the order with new items
       if (isEditMode || hasExistingItems) {
         await handleUpdateOrder()
       } else {
@@ -960,9 +1078,15 @@ export const CreateOrder = () => {
                   value={formData.date}
                   onChange={(e) => handleDateChange(e.target.value)}
                   className="dateInput"
-                  disabled={loading}
+                  disabled={loading || isEditMode} // Disable date change in edit mode
                   max={new Date().toISOString().split('T')[0]} // Cannot select future dates
                 />
+                {isEditMode && (
+                  <div className="dateLockInfo">
+                    <FontAwesomeIcon icon={faClock} />
+                    <span>Date cannot be changed in edit mode</span>
+                  </div>
+                )}
               </div>
 
               {/* Existing Items Notification */}
@@ -1082,7 +1206,7 @@ export const CreateOrder = () => {
 
                       <div className="quantityPriceRow">
                         <div className="inputGroup quantityGroup">
-                          <label className="inputLabel">Quantity (in KGs)</label>
+                          <label className="inputLabel">Quantity</label>
                           <input
                             type="number"
                             min="0.01"
@@ -1141,6 +1265,69 @@ export const CreateOrder = () => {
                   <FontAwesomeIcon icon={faRupeeSign} />
                   {totalAmount.toFixed(2)}
                 </span>
+              </div>
+            </div>
+          )}
+
+          {/* Beautiful Payment Section */}
+          {selectedCustomer && formData.items.length > 0 && (
+            <div className="formSection">
+              <h3 className="sectionTitle">Payment</h3>
+              
+              {/* Minimal Payment Overview */}
+              <div className="paymentOverview">
+                <div className="paymentStats">
+                  <div className="paymentStat">
+                    <div className="statLabel">Total</div>
+                    <div className="statAmount total">₹{totalAmount.toFixed(2)}</div>
+                  </div>
+                  <div className="paymentStat">
+                    <div className="statLabel">Paid</div>
+                    <div className="statAmount paid">₹{totalPaid.toFixed(2)}</div>
+                  </div>
+                  <div className="paymentStat">
+                    <div className="statLabel">Balance</div>
+                    <div className={`statAmount ${balanceAmount > 0 ? 'pending' : 'paid'}`}>
+                      ₹{Math.abs(balanceAmount).toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Progress */}
+                <div className="paymentProgress">
+                  <div className="progressBar">
+                    <div 
+                      className="progressFill"
+                      style={{ width: `${Math.min(100, (totalPaid / totalAmount) * 100)}%` }}
+                    ></div>
+                  </div>
+                  <div className="progressText">
+                    {((totalPaid / totalAmount) * 100).toFixed(1)}% Paid
+                  </div>
+                </div>
+
+                {/* Payment Input - Only show if balance is positive */}
+                {balanceAmount > 0 && (
+                  <div className="paymentInputCompact">
+                    <div className="inputGroup">
+                      <label className="inputLabel">Enter Payment</label>
+                      <div className="paymentInputWrapper">
+                        <FontAwesomeIcon icon={faRupeeSign} className="rupeeIcon" />
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          max={totalAmount}
+                          placeholder="0.00"
+                          value={paymentAmount}
+                          onChange={(e) => handlePaymentAmountChange(e.target.value)}
+                          className="paymentInput"
+                          disabled={loading}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

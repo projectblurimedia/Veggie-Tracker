@@ -1,15 +1,48 @@
 const CustomerRecord = require('../models/CustomerRecord')
 
+// Helper function to calculate order totals
+const calculateOrderTotals = (record) => {
+  // Calculate item totals - price already includes quantity, so just set total equal to price
+  if (record.items && record.items.length > 0) {
+    record.items.forEach(item => {
+      item.total = item.price || 0
+    })
+  }
+
+  // Calculate totalAmount from items
+  record.totalAmount = record.items.reduce((total, item) => {
+    return total + (item.total || 0)
+  }, 0)
+
+  // Calculate balance amount
+  record.balanceAmount = (record.totalAmount || 0) - (record.totalPaid || 0)
+
+  // Update payment status based on amounts
+  if (record.balanceAmount <= 0) {
+    record.paymentStatus = 'paid'
+  } else if (record.totalPaid > 0) {
+    record.paymentStatus = 'partial'
+  } else {
+    record.paymentStatus = 'pending'
+  }
+
+  return record
+}
+
 // Create new customer record (order)
 const createCustomerRecord = async (req, res) => {
   try {
-    const { customerDetails, date, items } = req.body
+    const { customerDetails, date, items, totalPaid } = req.body
 
     const customerRecord = new CustomerRecord({
       customerDetails,
       date: date || new Date(),
-      items
+      items,
+      totalPaid: totalPaid || 0
     })
+
+    // Calculate totals before saving
+    calculateOrderTotals(customerRecord)
 
     await customerRecord.save()
 
@@ -33,9 +66,15 @@ const getAllCustomerRecords = async (req, res) => {
     const records = await CustomerRecord.find()
       .sort({ date: -1, createdAt: -1 })
     
+    // Ensure all records have calculated totals
+    const recordsWithTotals = records.map(record => {
+      const recordObj = record.toObject()
+      return calculateOrderTotals(recordObj)
+    })
+    
     res.status(200).json({
       success: true,
-      data: records
+      data: recordsWithTotals
     })
   } catch (error) {
     res.status(500).json({
@@ -52,12 +91,18 @@ const getRecordsByCustomer = async (req, res) => {
     const { customerId } = req.params
     
     const records = await CustomerRecord.find({
-      'customerDetails.uniqueId': customerId
+      'customerDetails._id': customerId
     }).sort({ date: -1 })
+
+    // Ensure all records have calculated totals
+    const recordsWithTotals = records.map(record => {
+      const recordObj = record.toObject()
+      return calculateOrderTotals(recordObj)
+    })
 
     res.status(200).json({
       success: true,
-      data: records
+      data: recordsWithTotals
     })
   } catch (error) {
     res.status(500).json({
@@ -80,9 +125,12 @@ const getRecordById = async (req, res) => {
       })
     }
 
+    // Ensure record has calculated totals
+    const recordWithTotals = calculateOrderTotals(record.toObject())
+
     res.status(200).json({
       success: true,
-      data: record
+      data: recordWithTotals
     })
   } catch (error) {
     res.status(500).json({
@@ -93,7 +141,7 @@ const getRecordById = async (req, res) => {
   }
 }
 
-// Get records by date range
+// Get records by date range - FIXED VERSION
 const getRecordsByDateRange = async (req, res) => {
   try {
     const { startDate, endDate } = req.query
@@ -112,9 +160,15 @@ const getRecordsByDateRange = async (req, res) => {
       }
     }).sort({ date: -1 })
 
+    // Ensure all records have calculated totals
+    const recordsWithTotals = records.map(record => {
+      const recordObj = record.toObject()
+      return calculateOrderTotals(recordObj)
+    })
+
     res.status(200).json({
       success: true,
-      data: records
+      data: recordsWithTotals
     })
   } catch (error) {
     res.status(500).json({
@@ -128,14 +182,35 @@ const getRecordsByDateRange = async (req, res) => {
 // Update customer record
 const updateCustomerRecord = async (req, res) => {
   try {
-    const { customerDetails, date, items } = req.body
+    const { customerDetails, date, items, totalPaid } = req.body
     
+    // First get the current record to preserve existing data if not provided
+    const currentRecord = await CustomerRecord.findById(req.params.id)
+    if (!currentRecord) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      })
+    }
+
+    // Prepare update data
+    const updateData = {
+      customerDetails: customerDetails || currentRecord.customerDetails,
+      date: date || currentRecord.date,
+      items: items || currentRecord.items,
+      totalPaid: totalPaid !== undefined ? totalPaid : currentRecord.totalPaid,
+      updatedAt: new Date()
+    }
+
+    // Calculate totals before updating
+    const recordWithTotals = calculateOrderTotals(updateData)
+
     const record = await CustomerRecord.findByIdAndUpdate(
       req.params.id,
-      { customerDetails, date, items },
+      recordWithTotals,
       { new: true, runValidators: true }
     )
-
+    
     if (!record) {
       return res.status(404).json({
         success: false,
@@ -152,6 +227,62 @@ const updateCustomerRecord = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error updating order',
+      error: error.message
+    })
+  }
+}
+
+// In customerRecordController.js - Update the addPaymentToRecord function
+const addPaymentToRecord = async (req, res) => {
+  try {
+    const { amount } = req.body
+    
+    if (!amount || amount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid payment amount is required'
+      })
+    }
+
+    const record = await CustomerRecord.findById(req.params.id)
+    
+    if (!record) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      })
+    }
+
+    // Add payment and save
+    record.totalPaid += parseFloat(amount)
+    
+    // Recalculate balance and payment status
+    record.balanceAmount = record.totalAmount - record.totalPaid
+    
+    if (record.balanceAmount <= 0) {
+      record.paymentStatus = 'paid'
+    } else if (record.totalPaid > 0) {
+      record.paymentStatus = 'partial'
+    } else {
+      record.paymentStatus = 'pending'
+    }
+
+    record.updatedAt = new Date()
+
+    await record.save()
+
+    // Return the fully calculated record
+    const updatedRecord = calculateOrderTotals(record.toObject())
+
+    res.status(200).json({
+      success: true,
+      message: 'Payment added successfully',
+      data: updatedRecord
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error adding payment',
       error: error.message
     })
   }
@@ -187,11 +318,25 @@ const getDashboardStats = async (req, res) => {
   try {
     const totalOrders = await CustomerRecord.countDocuments()
     
-    const totalRevenue = await CustomerRecord.aggregate([
+    // Get all records and calculate totals manually for accurate stats
+    const allRecords = await CustomerRecord.find()
+    let totalRevenue = 0
+    let totalPaid = 0
+    let totalBalance = 0
+
+    allRecords.forEach(record => {
+      const recordWithTotals = calculateOrderTotals(record.toObject())
+      totalRevenue += recordWithTotals.totalAmount || 0
+      totalPaid += recordWithTotals.totalPaid || 0
+      totalBalance += recordWithTotals.balanceAmount || 0
+    })
+
+    const paymentStats = await CustomerRecord.aggregate([
       {
         $group: {
-          _id: null,
-          total: { $sum: '$totalPrice' }
+          _id: '$paymentStatus',
+          count: { $sum: 1 },
+          amount: { $sum: '$balanceAmount' }
         }
       }
     ])
@@ -205,27 +350,34 @@ const getDashboardStats = async (req, res) => {
       date: { $gte: today, $lt: tomorrow }
     })
 
-    const todayRevenue = await CustomerRecord.aggregate([
-      {
-        $match: {
-          date: { $gte: today, $lt: tomorrow }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: '$totalPrice' }
-        }
-      }
-    ])
+    // Calculate today's revenue manually for accuracy
+    const todayRecords = await CustomerRecord.find({
+      date: { $gte: today, $lt: tomorrow }
+    })
+    
+    let todayRevenue = 0
+    let todayPaid = 0
+    let todayBalance = 0
+    
+    todayRecords.forEach(record => {
+      const recordWithTotals = calculateOrderTotals(record.toObject())
+      todayRevenue += recordWithTotals.totalAmount || 0
+      todayPaid += recordWithTotals.totalPaid || 0
+      todayBalance += recordWithTotals.balanceAmount || 0
+    })
 
     res.status(200).json({
       success: true,
       data: {
         totalOrders,
-        totalRevenue: totalRevenue[0]?.total || 0,
+        totalRevenue,
+        totalPaid,
+        totalBalance,
+        paymentStats,
         todayOrders,
-        todayRevenue: todayRevenue[0]?.total || 0
+        todayRevenue,
+        todayPaid,
+        todayBalance
       }
     })
   } catch (error) {
@@ -255,9 +407,15 @@ const getOrderByCustormerAndDate = async (req, res) => {
       }
     }).sort({ createdAt: -1 })
     
+    // Ensure all records have calculated totals
+    const ordersWithTotals = orders.map(record => {
+      const recordObj = record.toObject()
+      return calculateOrderTotals(recordObj)
+    })
+    
     res.json({
       success: true,
-      data: orders,
+      data: ordersWithTotals,
       message: 'Orders fetched successfully'
     })
   } catch (error) {
@@ -270,6 +428,57 @@ const getOrderByCustormerAndDate = async (req, res) => {
   }
 }
 
+// Get records by payment status
+const getRecordsByPaymentStatus = async (req, res) => {
+  try {
+    const { status } = req.params
+    
+    const records = await CustomerRecord.findByPaymentStatus(status)
+    
+    // Ensure all records have calculated totals
+    const recordsWithTotals = records.map(record => {
+      const recordObj = record.toObject()
+      return calculateOrderTotals(recordObj)
+    })
+    
+    res.status(200).json({
+      success: true,
+      data: recordsWithTotals
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching orders by payment status',
+      error: error.message
+    })
+  }
+}
+
+// Get customer outstanding balance
+const getCustomerOutstandingBalance = async (req, res) => {
+  try {
+    const { customerId } = req.params
+    
+    const outstanding = await CustomerRecord.getCustomerOutstandingBalance(customerId)
+    
+    res.status(200).json({
+      success: true,
+      data: outstanding[0] || {
+        _id: customerId,
+        totalOutstanding: 0,
+        customerName: '',
+        recordCount: 0
+      }
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching customer outstanding balance',
+      error: error.message
+    })
+  }
+}
+
 module.exports = {
   createCustomerRecord,
   getAllCustomerRecords,
@@ -277,7 +486,10 @@ module.exports = {
   getRecordById,
   getRecordsByDateRange,
   updateCustomerRecord,
+  addPaymentToRecord,
   deleteCustomerRecord,
   getDashboardStats,
   getOrderByCustormerAndDate,
+  getRecordsByPaymentStatus,
+  getCustomerOutstandingBalance
 }
