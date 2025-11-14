@@ -18,8 +18,8 @@ function App() {
   const [username, setUsername] = useState(null)
   const [fullname, setFullname] = useState(null)
 
-  const axiosBaseUrl = "http://192.168.31.232:8000/server"
-  // const axiosBaseUrl = "https://veggie-tracker-backend.onrender.com/server"
+  // const axiosBaseUrl = "http://192.168.31.232:8000/server"
+  const axiosBaseUrl = "https://veggie-tracker-backend.onrender.com/server"
 
   axios.defaults.baseURL = axiosBaseUrl
 
