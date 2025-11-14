@@ -54,7 +54,7 @@ customerSchema.virtual('totalPaid', {
   justOne: false
 })
 
-// Virtual for outstanding balance (never negative)
+// Virtual for outstanding balance (ALLOWING NEGATIVE VALUES FOR EXTRA PAYMENTS)
 customerSchema.virtual('outstandingBalance', {
   ref: 'CustomerRecord',
   localField: 'uniqueId',
@@ -62,10 +62,10 @@ customerSchema.virtual('outstandingBalance', {
   justOne: false
 })
 
-// Virtual for payment status summary
+// Virtual for payment status summary - UPDATED LOGIC
 customerSchema.virtual('paymentSummary').get(function() {
   if (this.totalRevenue === 0) return 'no-orders'
-  if (this.outstandingBalance <= 0) return 'paid'
+  if (this.outstandingBalance <= 0) return 'paid' // Negative or zero balance means paid
   if (this.outstandingBalance === this.totalRevenue) return 'pending'
   return 'partial'
 })
@@ -76,7 +76,7 @@ customerSchema.pre('save', function(next) {
   next()
 })
 
-// Static method to get customers with payment summary
+// Static method to get customers with payment summary - UPDATED LOGIC
 customerSchema.statics.getCustomersWithPaymentSummary = async function() {
   const customers = await this.aggregate([
     {
@@ -96,8 +96,8 @@ customerSchema.statics.getCustomersWithPaymentSummary = async function() {
         totalPaid: { 
           $sum: '$orders.totalPaid' 
         },
-        // Calculate raw balance first
-        rawBalance: {
+        // Calculate balance amount (can be negative for extra payments)
+        outstandingBalance: {
           $sum: '$orders.balanceAmount'
         }
       }
@@ -112,13 +112,8 @@ customerSchema.statics.getCustomersWithPaymentSummary = async function() {
         totalOrders: 1,
         totalRevenue: { $ifNull: ['$totalRevenue', 0] },
         totalPaid: { $ifNull: ['$totalPaid', 0] },
-        // Ensure outstanding balance is never negative - use $max to set minimum value as 0
-        outstandingBalance: {
-          $max: [
-            { $ifNull: ['$rawBalance', 0] },
-            0
-          ]
-        },
+        // Allow negative values for outstanding balance (extra payments)
+        outstandingBalance: { $ifNull: ['$outstandingBalance', 0] },
         paymentSummary: {
           $cond: {
             if: { $eq: ['$totalRevenue', 0] },
@@ -126,19 +121,13 @@ customerSchema.statics.getCustomersWithPaymentSummary = async function() {
             else: {
               $cond: {
                 if: { 
-                  $lte: [
-                    { $max: [{ $ifNull: ['$rawBalance', 0] }, 0] },
-                    0
-                  ] 
+                  $lte: ['$outstandingBalance', 0] 
                 },
-                then: 'paid',
+                then: 'paid', // Negative or zero balance means paid
                 else: {
                   $cond: {
                     if: { 
-                      $eq: [
-                        { $max: [{ $ifNull: ['$rawBalance', 0] }, 0] },
-                        { $ifNull: ['$totalRevenue', 0] }
-                      ] 
+                      $eq: ['$outstandingBalance', '$totalRevenue'] 
                     },
                     then: 'pending',
                     else: 'partial'
@@ -158,7 +147,7 @@ customerSchema.statics.getCustomersWithPaymentSummary = async function() {
   return customers
 }
 
-// Instance method to calculate payment summary
+// Instance method to calculate payment summary - UPDATED LOGIC
 customerSchema.methods.getPaymentSummary = async function() {
   const CustomerRecord = mongoose.model('CustomerRecord')
   const records = await CustomerRecord.find({ 
@@ -167,15 +156,12 @@ customerSchema.methods.getPaymentSummary = async function() {
   
   const totalRevenue = records.reduce((total, record) => total + (record.totalAmount || 0), 0)
   const totalPaid = records.reduce((total, record) => total + (record.totalPaid || 0), 0)
-  const rawBalance = records.reduce((total, record) => total + (record.balanceAmount || 0), 0)
-  
-  // Ensure outstanding balance is never negative
-  const outstandingBalance = Math.max(rawBalance, 0)
+  const outstandingBalance = records.reduce((total, record) => total + (record.balanceAmount || 0), 0)
   
   let paymentSummary = 'no-orders'
   if (totalRevenue > 0) {
     if (outstandingBalance <= 0) {
-      paymentSummary = 'paid'
+      paymentSummary = 'paid' // Negative or zero balance means paid
     } else if (outstandingBalance === totalRevenue) {
       paymentSummary = 'pending'
     } else {
@@ -187,7 +173,7 @@ customerSchema.methods.getPaymentSummary = async function() {
     totalOrders: records.length,
     totalRevenue,
     totalPaid,
-    outstandingBalance,
+    outstandingBalance, 
     paymentSummary
   }
 }

@@ -126,21 +126,6 @@ export const Owner = ({ setIsAuth, isAdmin, setIsAdmin, username, setUsername, f
     })
   }
 
-  // Get relative day text
-  const getRelativeDay = (dateString) => {
-    const today = new Date().toISOString().split('T')[0]
-    const yesterday = getYesterdayDate()
-    
-    if (dateString === today) return 'Today'
-    if (dateString === yesterday) return 'Yesterday'
-    
-    const date = new Date(dateString)
-    const diffTime = Math.abs(new Date() - date)
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    
-    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
-  }
-
   useEffect(() => {
     loadOwnerExpenses()
   }, [selectedDate, customDate])
@@ -568,7 +553,6 @@ export const Owner = ({ setIsAuth, isAdmin, setIsAdmin, username, setUsername, f
                   onEditClick={handleEditClick}
                   onClick={handleExpenseClick}
                   formatDateForDisplay={formatDateForDisplay}
-                  getRelativeDay={getRelativeDay}
                 />
               )
             })}
@@ -601,24 +585,15 @@ export const Owner = ({ setIsAuth, isAdmin, setIsAdmin, username, setUsername, f
   )
 }
 
-// Expense Record Component (Similar to Record component)
+// Expense Record Component
 const ExpenseRecord = ({ 
   expense, 
   statusColor, 
   onEditClick, 
   onClick,
-  formatDateForDisplay,
-  getRelativeDay
+  formatDateForDisplay
 }) => {
   const [showAllItems, setShowAllItems] = useState(false)
-
-  const getInitials = (date) => {
-    if (!date) return 'NA'
-    const dateObj = new Date(date)
-    const day = dateObj.getDate()
-    const month = dateObj.toLocaleString('en-US', { month: 'short' })
-    return `${day}${month}`
-  }
 
   const toggleShowAllItems = (e) => {
     e.stopPropagation()
@@ -640,24 +615,21 @@ const ExpenseRecord = ({
 
   return (
     <div className="recordCard" onClick={handleCardClick}>
-      {/* Card Header */}
+      {/* Card Header - Icon, Date, and Items+Amount in Row */}
       <div className="cardHeader">
-        <div className="headerLeft">
-          <div 
-            className="expenseAvatar"
-            style={{ backgroundColor: '#8b5cf6' }}
-          >
+        <div className="headerContent">
+          <div className="expenseAvatar">
             <FontAwesomeIcon icon={faReceipt} />
           </div>
-          <div className="expenseMainInfo">
+          <div className="headerInfo">
             <h3 className="expenseDate">{formatDateForDisplay(expense.date)}</h3>
-            <div className="orderMeta">
+            <div className="itemsAmountRow">
               <div className="metaItem itemsCount">
                 <FontAwesomeIcon icon={faBoxes} className="metaIcon" />
                 <span>{expense.items?.length || 0} items</span>
               </div>
               <div 
-                className="metaItem paymentStatusHeader"
+                className="metaItem totalAmountBadge"
                 style={{
                   backgroundColor: `${statusColor}15`,
                   border: `1.5px solid ${statusColor}`,
@@ -665,17 +637,10 @@ const ExpenseRecord = ({
                 }}
               >
                 <FontAwesomeIcon icon={faRupeeSign} className="metaIcon" />
-                <span>₹{(expense.totalPrice || 0).toFixed(0)}</span>
+                <span>{(expense.totalPrice || 0).toFixed(0)}</span>
               </div>
             </div>
           </div>
-        </div>
-        {/* Right side with day indicator */}
-        <div 
-          className="dayIndicator"
-          style={{ backgroundColor: statusColor }}
-        >
-          {getRelativeDay(expense.date.split('T')[0])}
         </div>
       </div>
 
@@ -684,7 +649,7 @@ const ExpenseRecord = ({
         <div className="sectionHeader">
           <h4 className="sectionTitle">Expense Items</h4>
           <div className="totalAmountInfo">
-            <span className="totalLabel">Total Amount:</span>
+            <span className="totalLabel">Total:</span>
             <span className="totalAmount">₹{(expense.totalPrice || 0).toFixed(2)}</span>
           </div>
         </div>

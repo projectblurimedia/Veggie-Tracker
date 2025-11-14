@@ -19,6 +19,8 @@
 * {
   scrollbar-width: thin;
   scrollbar-color: #1d9bf0 aliceblue;
+  -webkit-tap-highlight-color: transparent;
+  tap-highlight-color: transparent;
 }
 
 *::-webkit-scrollbar {

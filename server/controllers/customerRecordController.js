@@ -1,6 +1,6 @@
 const CustomerRecord = require('../models/CustomerRecord')
 
-// Helper function to calculate order totals
+// Helper function to calculate order totals (ALLOWS NEGATIVE BALANCES)
 const calculateOrderTotals = (record) => {
   // Calculate item totals - price already includes quantity, so just set total equal to price
   if (record.items && record.items.length > 0) {
@@ -14,11 +14,13 @@ const calculateOrderTotals = (record) => {
     return total + (item.total || 0)
   }, 0)
 
-  // Calculate balance amount
+  // Calculate balance amount - ALLOW NEGATIVE VALUES
   record.balanceAmount = (record.totalAmount || 0) - (record.totalPaid || 0)
 
-  // Update payment status based on amounts
-  if (record.balanceAmount <= 0) {
+  // Update payment status based on amounts (INCLUDES OVERPAID STATUS)
+  if (record.balanceAmount < 0) {
+    record.paymentStatus = 'overpaid'
+  } else if (record.balanceAmount === 0) {
     record.paymentStatus = 'paid'
   } else if (record.totalPaid > 0) {
     record.paymentStatus = 'partial'
@@ -60,11 +62,11 @@ const createCustomerRecord = async (req, res) => {
   }
 }
 
-// Get all customer records
+// Get all customer records - FIXED: Sort by latest first
 const getAllCustomerRecords = async (req, res) => {
   try {
     const records = await CustomerRecord.find()
-      .sort({ date: -1, createdAt: -1 })
+      .sort({ date: -1, createdAt: -1 }) // Sort by date descending, then by creation time
     
     // Ensure all records have calculated totals
     const recordsWithTotals = records.map(record => {
@@ -92,7 +94,7 @@ const getRecordsByCustomer = async (req, res) => {
     
     const records = await CustomerRecord.find({
       'customerDetails._id': customerId
-    }).sort({ date: -1 })
+    }).sort({ date: -1, createdAt: -1 }) // Sort by latest first
 
     // Ensure all records have calculated totals
     const recordsWithTotals = records.map(record => {
@@ -141,7 +143,7 @@ const getRecordById = async (req, res) => {
   }
 }
 
-// Get records by date range - FIXED VERSION
+// Get records by date range - FIXED: Sort by latest first
 const getRecordsByDateRange = async (req, res) => {
   try {
     const { startDate, endDate } = req.query
@@ -158,7 +160,7 @@ const getRecordsByDateRange = async (req, res) => {
         $gte: new Date(startDate),
         $lte: new Date(endDate)
       }
-    }).sort({ date: -1 })
+    }).sort({ date: -1, createdAt: -1 }) // Sort by date descending, then by creation time
 
     // Ensure all records have calculated totals
     const recordsWithTotals = records.map(record => {
@@ -179,7 +181,7 @@ const getRecordsByDateRange = async (req, res) => {
   }
 }
 
-// Update customer record
+// Update customer record - FIXED: Allows negative balances
 const updateCustomerRecord = async (req, res) => {
   try {
     const { customerDetails, date, items, totalPaid } = req.body
@@ -202,7 +204,7 @@ const updateCustomerRecord = async (req, res) => {
       updatedAt: new Date()
     }
 
-    // Calculate totals before updating
+    // Calculate totals before updating (NOW ALLOWS NEGATIVE BALANCES)
     const recordWithTotals = calculateOrderTotals(updateData)
 
     const record = await CustomerRecord.findByIdAndUpdate(
@@ -232,7 +234,7 @@ const updateCustomerRecord = async (req, res) => {
   }
 }
 
-// In customerRecordController.js - Update the addPaymentToRecord function
+// Add payment to record - FIXED: Allows overpayment
 const addPaymentToRecord = async (req, res) => {
   try {
     const { amount } = req.body
@@ -253,13 +255,16 @@ const addPaymentToRecord = async (req, res) => {
       })
     }
 
-    // Add payment and save
+    // Add payment and save (NOW ALLOWS OVERPAYMENT)
     record.totalPaid += parseFloat(amount)
     
-    // Recalculate balance and payment status
+    // Recalculate balance and payment status (ALLOWS NEGATIVE BALANCES)
     record.balanceAmount = record.totalAmount - record.totalPaid
     
-    if (record.balanceAmount <= 0) {
+    // Update payment status (INCLUDES OVERPAID STATUS)
+    if (record.balanceAmount < 0) {
+      record.paymentStatus = 'overpaid'
+    } else if (record.balanceAmount === 0) {
       record.paymentStatus = 'paid'
     } else if (record.totalPaid > 0) {
       record.paymentStatus = 'partial'
@@ -313,22 +318,25 @@ const deleteCustomerRecord = async (req, res) => {
   }
 }
 
-// Get dashboard statistics
+// Get dashboard statistics - UPDATED: Includes overpaid status
 const getDashboardStats = async (req, res) => {
   try {
     const totalOrders = await CustomerRecord.countDocuments()
     
     // Get all records and calculate totals manually for accurate stats
-    const allRecords = await CustomerRecord.find()
+    const allRecords = await CustomerRecord.find().sort({ date: -1, createdAt: -1 })
     let totalRevenue = 0
     let totalPaid = 0
     let totalBalance = 0
+    let totalCredit = 0 // Negative balances (overpayment)
 
     allRecords.forEach(record => {
       const recordWithTotals = calculateOrderTotals(record.toObject())
       totalRevenue += recordWithTotals.totalAmount || 0
       totalPaid += recordWithTotals.totalPaid || 0
-      totalBalance += recordWithTotals.balanceAmount || 0
+      const balance = recordWithTotals.balanceAmount || 0
+      totalBalance += Math.max(balance, 0) // Only positive balances
+      totalCredit += Math.min(balance, 0)  // Only negative balances (credit)
     })
 
     const paymentStats = await CustomerRecord.aggregate([
@@ -353,17 +361,20 @@ const getDashboardStats = async (req, res) => {
     // Calculate today's revenue manually for accuracy
     const todayRecords = await CustomerRecord.find({
       date: { $gte: today, $lt: tomorrow }
-    })
+    }).sort({ date: -1, createdAt: -1 })
     
     let todayRevenue = 0
     let todayPaid = 0
     let todayBalance = 0
+    let todayCredit = 0
     
     todayRecords.forEach(record => {
       const recordWithTotals = calculateOrderTotals(record.toObject())
       todayRevenue += recordWithTotals.totalAmount || 0
       todayPaid += recordWithTotals.totalPaid || 0
-      todayBalance += recordWithTotals.balanceAmount || 0
+      const balance = recordWithTotals.balanceAmount || 0
+      todayBalance += Math.max(balance, 0)
+      todayCredit += Math.min(balance, 0)
     })
 
     res.status(200).json({
@@ -373,11 +384,13 @@ const getDashboardStats = async (req, res) => {
         totalRevenue,
         totalPaid,
         totalBalance,
+        totalCredit: Math.abs(totalCredit), // Positive value for display
         paymentStats,
         todayOrders,
         todayRevenue,
         todayPaid,
-        todayBalance
+        todayBalance,
+        todayCredit: Math.abs(todayCredit) // Positive value for display
       }
     })
   } catch (error) {
@@ -405,7 +418,7 @@ const getOrderByCustormerAndDate = async (req, res) => {
         $gte: startDate,
         $lt: endDate
       }
-    }).sort({ createdAt: -1 })
+    }).sort({ date: -1, createdAt: -1 }) // Sort by latest first
     
     // Ensure all records have calculated totals
     const ordersWithTotals = orders.map(record => {
@@ -454,7 +467,7 @@ const getRecordsByPaymentStatus = async (req, res) => {
   }
 }
 
-// Get customer outstanding balance
+// Get customer outstanding balance (only positive balances)
 const getCustomerOutstandingBalance = async (req, res) => {
   try {
     const { customerId } = req.params
@@ -479,6 +492,31 @@ const getCustomerOutstandingBalance = async (req, res) => {
   }
 }
 
+// Get customer credit (negative balances)
+const getCustomerCredit = async (req, res) => {
+  try {
+    const { customerId } = req.params
+    
+    const credit = await CustomerRecord.getCustomerCredit(customerId)
+    
+    res.status(200).json({
+      success: true,
+      data: credit[0] || {
+        _id: customerId,
+        totalCredit: 0,
+        customerName: '',
+        recordCount: 0
+      }
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching customer credit',
+      error: error.message
+    })
+  }
+}
+
 module.exports = {
   createCustomerRecord,
   getAllCustomerRecords,
@@ -491,5 +529,6 @@ module.exports = {
   getDashboardStats,
   getOrderByCustormerAndDate,
   getRecordsByPaymentStatus,
-  getCustomerOutstandingBalance
+  getCustomerOutstandingBalance,
+  getCustomerCredit
 }

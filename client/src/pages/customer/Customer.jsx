@@ -142,9 +142,12 @@ export const Customer = () => {
     }))
   }
 
-  // Get payment status info
+  // Get payment status info - UPDATED LOGIC
   const getPaymentStatusInfo = (order) => {
-    if (order.paymentStatus === 'paid') {
+    const balanceAmount = order.balanceAmount || 0
+    
+    // If balance is zero or negative (extra payment), show as paid
+    if (balanceAmount <= 0) {
       return { 
         icon: faCheckCircle, 
         color: '#10b981', 
@@ -155,14 +158,14 @@ export const Customer = () => {
       return { 
         icon: faClock, 
         color: '#f59e0b', 
-        label: `₹${order.balanceAmount?.toFixed(2) || '0.00'} Due`,
+        label: `₹${balanceAmount.toFixed(2)} Due`,
         bgColor: '#fef3c7'
       }
     } else {
       return { 
         icon: faExclamationTriangle, 
         color: '#ef4444', 
-        label: `₹${order.balanceAmount?.toFixed(2) || '0.00'} Due`,
+        label: `₹${balanceAmount.toFixed(2)} Due`,
         bgColor: '#fee2e2'
       }
     }
@@ -203,6 +206,25 @@ export const Customer = () => {
   const totalQuantity = filteredOrders.reduce((sum, order) => {
     return sum + (order.items?.reduce((itemSum, item) => itemSum + (parseFloat(item.quantity) || 0), 0) || 0)
   }, 0)
+
+  // Calculate outstanding balance display - UPDATED
+  const getOutstandingBalanceDisplay = () => {
+    if (!customer) return '0.00'
+    
+    const balance = customer.outstandingBalance || 0
+    // Show negative values for extra payments
+    return balance.toLocaleString('en-IN')
+  }
+
+  // Get balance amount class - UPDATED
+  const getBalanceAmountClass = () => {
+    if (!customer) return ''
+    
+    const balance = customer.outstandingBalance || 0
+    if (balance > 0) return 'outstanding'
+    if (balance < 0) return 'credit'
+    return ''
+  }
 
   if (loading) {
     return (
@@ -344,8 +366,8 @@ export const Customer = () => {
                   <FontAwesomeIcon icon={faShoppingBag} className="statIcon" />
                 </div>
                 <div className="statInfo">
-                  <span className={`statNumber ${customer.outstandingBalance > 0 ? 'outstanding' : ''}`}>
-                    ₹{(customer.outstandingBalance || 0).toLocaleString('en-IN')}
+                  <span className={`statNumber ${getBalanceAmountClass()}`}>
+                    ₹{getOutstandingBalanceDisplay()}
                   </span>
                   <span className="statLabel">Balance Amount</span>
                 </div>

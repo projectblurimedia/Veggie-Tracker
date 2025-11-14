@@ -130,8 +130,8 @@
             }
 
             &.large {
-              width: 50px;
-              height: 50px;
+              width: 45px;
+              height: 45px;
               font-size: 1.1rem;
             }
 
@@ -151,7 +151,7 @@
             box-shadow: 
               0 10px 40px rgba(0, 0, 0, 0.15),
               0 0 0 1px rgba(0, 0, 0, 0.05);
-            min-width: 280px;
+            min-width: 320px;
             z-index: 1000;
             overflow: hidden;
             animation: dropdownFadeIn 0.2s ease-out;
@@ -168,15 +168,14 @@
                 .profileName {
                   font-weight: 600;
                   color: #2e3f5a;
-                  font-size: 1rem;
+                  font-size: .95rem;
                   text-transform: capitalize;
-                  margin-bottom: 0.25rem;
                 }
 
                 .profileRole {
                   font-size: 0.8rem;
-                  color: #64748b;
                   font-weight: 500;
+                  color: #64748b;
                 }
               }
             }
@@ -587,7 +586,7 @@
     }
   }
 
-  // Record Card Styles - Purple Theme with Item Cards like Record component
+  // Record Card Styles - Purple Theme with Correct Header Layout
   .recordCard {
     background: white;
     border: 1px solid #e2e8f0;
@@ -605,22 +604,16 @@
       border-color: #cbd5e1;
     }
 
-    // Card Header
+    // Card Header - Icon, Date, and Items+Amount in Row
     .cardHeader {
       padding: 1.5rem;
       background: #f8fafc;
       border-bottom: 1px solid #e2e8f0;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 1rem;
 
-      .headerLeft {
+      .headerContent {
         display: flex;
         align-items: flex-start;
         gap: 1rem;
-        flex: 1;
-        min-width: 0;
 
         .expenseAvatar {
           width: 48px;
@@ -632,15 +625,15 @@
           color: white;
           font-weight: 600;
           font-size: 1.1rem;
+          background: #8b5cf6;
           box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
           flex-shrink: 0;
           margin-top: 2px;
         }
 
-        .expenseMainInfo {
+        .headerInfo {
           flex: 1;
           min-width: 0;
-          overflow: hidden;
 
           .expenseDate {
             margin: 0 0 0.75rem 0;
@@ -653,11 +646,11 @@
             text-overflow: ellipsis;
           }
 
-          .orderMeta {
+          .itemsAmountRow {
             display: flex;
             align-items: center;
             gap: 1rem;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
 
             .metaItem {
               display: flex;
@@ -668,6 +661,7 @@
               font-weight: 500;
               font-size: 0.85rem;
               transition: all 0.2s ease;
+              white-space: nowrap;
 
               &.itemsCount {
                 background: #f1f5f9;
@@ -679,7 +673,7 @@
                 }
               }
 
-              &.paymentStatusHeader {
+              &.totalAmountBadge {
                 font-weight: 600;
                 box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 
@@ -704,18 +698,6 @@
             }
           }
         }
-      }
-
-      .dayIndicator {
-        color: white;
-        padding: 0.5rem 0.75rem;
-        border-radius: 10px;
-        font-weight: 700;
-        font-size: 0.85rem;
-        min-width: 80px;
-        text-align: center;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        flex-shrink: 0;
       }
     }
 
@@ -1215,7 +1197,7 @@
             }
 
             .profileDropdown {
-              min-width: 260px;
+              min-width: 300px;
               right: -10px;
             }
           }
@@ -1318,8 +1300,8 @@
         .header-actions {
           .profile {
             .profileDropdown {
-              min-width: 240px;
-              right: -15px;
+              min-width: 280px;
+              right: -7px;
             }
           }
         }

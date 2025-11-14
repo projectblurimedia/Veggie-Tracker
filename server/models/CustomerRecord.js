@@ -51,8 +51,7 @@ const customerRecordSchema = new mongoose.Schema({
   items: [orderItemSchema],
   totalAmount: {
     type: Number,
-    default: 0,
-    min: [0, 'Total amount cannot be negative']
+    default: 0
   },
   totalPaid: {
     type: Number,
@@ -61,12 +60,12 @@ const customerRecordSchema = new mongoose.Schema({
   },
   balanceAmount: {
     type: Number,
-    default: 0,
-    min: [0, 'Balance amount cannot be negative'] // Ensures balance is never negative
+    default: 0
+    // Removed min:0 constraint to allow negative balances (overpayment/credit)
   },
   paymentStatus: {
     type: String,
-    enum: ['pending', 'partial', 'paid'],
+    enum: ['pending', 'partial', 'paid', 'overpaid'],
     default: 'pending'
   },
   uniqueId: {
@@ -101,16 +100,13 @@ customerRecordSchema.pre('save', function(next) {
     return total + (item.price || 0)  // Sum the prices directly
   }, 0)
 
-  // Ensure totalPaid doesn't exceed totalAmount and balance is never negative
-  if (this.totalPaid > this.totalAmount) {
-    this.totalPaid = this.totalAmount
-  }
-
-  // Calculate balance amount - ensure it's never negative
-  this.balanceAmount = Math.max(this.totalAmount - this.totalPaid, 0)
+  // Calculate balance amount - ALLOW NEGATIVE VALUES (overpayment/credit)
+  this.balanceAmount = this.totalAmount - this.totalPaid
 
   // Update payment status based on amounts
-  if (this.balanceAmount <= 0) {
+  if (this.balanceAmount < 0) {
+    this.paymentStatus = 'overpaid' // New status for overpayment
+  } else if (this.balanceAmount === 0) {
     this.paymentStatus = 'paid'
   } else if (this.totalPaid > 0) {
     this.paymentStatus = 'partial'
@@ -132,51 +128,50 @@ customerRecordSchema.virtual('formattedTotalPaid').get(function() {
 })
 
 customerRecordSchema.virtual('formattedBalanceAmount').get(function() {
-  return `₹${this.balanceAmount.toFixed(2)}`
+  return `₹${Math.abs(this.balanceAmount).toFixed(2)}`
 })
 
-// Instance method to add payment (ensures balance never becomes negative)
+// Virtual to check if balance is negative (credit/overpaid)
+customerRecordSchema.virtual('isOverpaid').get(function() {
+  return this.balanceAmount < 0
+})
+
+// Instance method to add payment (allows overpayment creating negative balance)
 customerRecordSchema.methods.addPayment = function(amount) {
   if (amount <= 0) {
     throw new Error('Payment amount must be positive')
   }
   
-  const newTotalPaid = this.totalPaid + amount
+  this.totalPaid += amount
+  this.balanceAmount = this.totalAmount - this.totalPaid
   
-  // Prevent overpayment - cap at totalAmount
-  if (newTotalPaid > this.totalAmount) {
-    throw new Error(`Payment amount exceeds outstanding balance. Maximum payment allowed: ₹${(this.totalAmount - this.totalPaid).toFixed(2)}`)
-  }
-  
-  this.totalPaid = newTotalPaid
-  this.balanceAmount = Math.max(this.totalAmount - this.totalPaid, 0)
-  
-  // Update payment status
-  if (this.balanceAmount <= 0) {
+  // Update payment status (now allows overpaid status)
+  if (this.balanceAmount < 0) {
+    this.paymentStatus = 'overpaid'
+  } else if (this.balanceAmount === 0) {
     this.paymentStatus = 'paid'
   } else if (this.totalPaid > 0) {
     this.paymentStatus = 'partial'
+  } else {
+    this.paymentStatus = 'pending'
   }
   
   return this.save()
 }
 
-// Instance method to update payment (set specific amount)
+// Instance method to update payment (set specific amount) - allows overpayment
 customerRecordSchema.methods.updatePayment = function(newTotalPaid) {
   if (newTotalPaid < 0) {
     throw new Error('Payment amount cannot be negative')
   }
   
-  // Prevent overpayment - cap at totalAmount
-  if (newTotalPaid > this.totalAmount) {
-    throw new Error(`Payment amount exceeds total order amount. Maximum payment allowed: ₹${this.totalAmount.toFixed(2)}`)
-  }
-  
   this.totalPaid = newTotalPaid
-  this.balanceAmount = Math.max(this.totalAmount - this.totalPaid, 0)
+  this.balanceAmount = this.totalAmount - this.totalPaid
   
-  // Update payment status
-  if (this.balanceAmount <= 0) {
+  // Update payment status (now allows overpaid status)
+  if (this.balanceAmount < 0) {
+    this.paymentStatus = 'overpaid'
+  } else if (this.balanceAmount === 0) {
     this.paymentStatus = 'paid'
   } else if (this.totalPaid > 0) {
     this.paymentStatus = 'partial'
@@ -192,19 +187,39 @@ customerRecordSchema.statics.findByPaymentStatus = function(status) {
   return this.find({ paymentStatus: status })
 }
 
-// Static method to get total outstanding balance for a customer
+// Static method to get total outstanding balance for a customer (only positive balances)
 customerRecordSchema.statics.getCustomerOutstandingBalance = function(customerId) {
   return this.aggregate([
     {
       $match: {
         'customerDetails._id': new mongoose.Types.ObjectId(customerId),
-        'balanceAmount': { $gt: 0 }
+        'balanceAmount': { $gt: 0 } // Only positive balances (amounts owed)
       }
     },
     {
       $group: {
         _id: '$customerDetails._id',
         totalOutstanding: { $sum: '$balanceAmount' },
+        customerName: { $first: '$customerDetails.fullName' },
+        recordCount: { $sum: 1 }
+      }
+    }
+  ])
+}
+
+// Static method to get customer credit (negative balances)
+customerRecordSchema.statics.getCustomerCredit = function(customerId) {
+  return this.aggregate([
+    {
+      $match: {
+        'customerDetails._id': new mongoose.Types.ObjectId(customerId),
+        'balanceAmount': { $lt: 0 } // Only negative balances (credit)
+      }
+    },
+    {
+      $group: {
+        _id: '$customerDetails._id',
+        totalCredit: { $sum: '$balanceAmount' },
         customerName: { $first: '$customerDetails.fullName' },
         recordCount: { $sum: 1 }
       }

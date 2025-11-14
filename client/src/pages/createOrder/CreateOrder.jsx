@@ -573,11 +573,6 @@ export const CreateOrder = () => {
         return false
       }
 
-      if (payment > totalAmount) {
-        showToast('Payment amount cannot exceed total amount', 'error')
-        return false
-      }
-
       // Use the dedicated payment endpoint - this is the key fix
       const response = await axios.post(`/orders/${orderIdToUpdate}/payment`, {
         amount: payment
@@ -1269,7 +1264,7 @@ export const CreateOrder = () => {
             </div>
           )}
 
-          {/* Beautiful Payment Section */}
+          {/* Beautiful Payment Section - UPDATED FOR NEGATIVE BALANCES */}
           {selectedCustomer && formData.items.length > 0 && (
             <div className="formSection">
               <h3 className="sectionTitle">Payment</h3>
@@ -1286,9 +1281,11 @@ export const CreateOrder = () => {
                     <div className="statAmount paid">₹{totalPaid.toFixed(2)}</div>
                   </div>
                   <div className="paymentStat">
-                    <div className="statLabel">Balance</div>
-                    <div className={`statAmount ${balanceAmount > 0 ? 'pending' : 'paid'}`}>
-                      ₹{Math.abs(balanceAmount).toFixed(2)}
+                    <div className="statLabel">
+                      Balance
+                    </div>
+                    <div className={`statAmount ${balanceAmount < 0 ? 'credit' : balanceAmount > 0 ? 'pending' : 'paid'}`}>
+                      ₹{balanceAmount.toFixed(2)}
                     </div>
                   </div>
                 </div>
@@ -1298,16 +1295,22 @@ export const CreateOrder = () => {
                   <div className="progressBar">
                     <div 
                       className="progressFill"
-                      style={{ width: `${Math.min(100, (totalPaid / totalAmount) * 100)}%` }}
+                      style={{ 
+                        width: `${Math.min(100, Math.max(0, (totalPaid / totalAmount) * 100))}%` 
+                      }}
                     ></div>
                   </div>
                   <div className="progressText">
-                    {((totalPaid / totalAmount) * 100).toFixed(1)}% Paid
+                    {totalAmount > 0 
+                      ? `${((totalPaid / totalAmount) * 100).toFixed(1)}% Paid`
+                      : 'No items'
+                    }
+                    {balanceAmount < 0 && ' (Overpaid)'}
                   </div>
                 </div>
 
-                {/* Payment Input - Only show if balance is positive */}
-                {balanceAmount > 0 && (
+                {/* Payment Input - Show if not overpaid or to add more credit */}
+                {(balanceAmount > 0 || balanceAmount === 0) && (
                   <div className="paymentInputCompact">
                     <div className="inputGroup">
                       <label className="inputLabel">Enter Payment</label>
@@ -1317,7 +1320,6 @@ export const CreateOrder = () => {
                           type="number"
                           min="0"
                           step="0.01"
-                          max={totalAmount}
                           placeholder="0.00"
                           value={paymentAmount}
                           onChange={(e) => handlePaymentAmountChange(e.target.value)}
