@@ -286,7 +286,7 @@ export const Owner = ({ setIsAuth, isAdmin, setIsAdmin, username, setUsername, f
   const getStatusColor = (totalCost) => {
     if (totalCost > 4000) return '#ef4444'
     if (totalCost > 3000) return '#f59e0b'
-    if (totalCost > 2000) return '#3b82f6'
+    if (totalCost > 2000) return '#8b5cf6'
     return '#10b981'
   }
 
@@ -408,15 +408,17 @@ export const Owner = ({ setIsAuth, isAdmin, setIsAdmin, username, setUsername, f
             {/* Profile Dropdown */}
             <div className="profile" ref={profileRef}>
               <div 
-                className={`initials ${isDropdownOpen ? 'active' : ''}`}
+                className={`profileAvatar ${isDropdownOpen ? 'active' : ''}`}
                 onClick={toggleDropdown}
               >
-                {initials}
+                <span className="avatarInitials">{initials}</span>
               </div>
               {isDropdownOpen && (
                 <div className="profileDropdown" ref={dropdownRef}>
                   <div className="profileInfo">
-                    <FontAwesomeIcon icon={faUserCircle} className="profileIcon" />
+                    <div className="profileAvatar large">
+                      <span className="avatarInitials">{initials}</span>
+                    </div>
                     <div className="profileDetails">
                       <div className="profileName">{fullname || 'User'}</div>
                       <div className="profileRole">{isAdmin ? 'Owner' : 'Worker'}</div>
@@ -642,13 +644,13 @@ const ExpenseRecord = ({
       <div className="cardHeader">
         <div className="headerLeft">
           <div 
-            className="customerAvatar"
-            style={{ backgroundColor: statusColor }}
+            className="expenseAvatar"
+            style={{ backgroundColor: '#8b5cf6' }}
           >
-            {getInitials(expense.date)}
+            <FontAwesomeIcon icon={faReceipt} />
           </div>
-          <div className="customerMainInfo">
-            <h3 className="customerName">{formatDateForDisplay(expense.date)}</h3>
+          <div className="expenseMainInfo">
+            <h3 className="expenseDate">{formatDateForDisplay(expense.date)}</h3>
             <div className="orderMeta">
               <div className="metaItem itemsCount">
                 <FontAwesomeIcon icon={faBoxes} className="metaIcon" />
@@ -662,14 +664,17 @@ const ExpenseRecord = ({
                   color: statusColor
                 }}
               >
-                <FontAwesomeIcon icon={faReceipt} className="metaIcon" />
+                <FontAwesomeIcon icon={faRupeeSign} className="metaIcon" />
                 <span>₹{(expense.totalPrice || 0).toFixed(0)}</span>
               </div>
             </div>
           </div>
         </div>
         {/* Right side with day indicator */}
-        <div className="dayIndicator">
+        <div 
+          className="dayIndicator"
+          style={{ backgroundColor: statusColor }}
+        >
           {getRelativeDay(expense.date.split('T')[0])}
         </div>
       </div>

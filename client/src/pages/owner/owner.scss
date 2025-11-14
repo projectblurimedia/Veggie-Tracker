@@ -101,8 +101,8 @@
           position: relative;
           cursor: pointer;
 
-          .initials {
-            background: rgba(255, 255, 255, 0.15);
+          .profileAvatar {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
             color: #fff;
             font-weight: 700;
             font-size: 1rem;
@@ -116,16 +116,28 @@
             transition: all 0.3s ease;
             border: 2px solid rgba(255, 255, 255, 0.3);
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            padding: 2px;
 
             &:hover {
-              background: rgba(255, 255, 255, 0.2);
+              background: linear-gradient(135deg, #7c3aed, #6d28d9);
               transform: scale(1.05);
             }
 
             &.active {
-              background: rgba(255, 255, 255, 0.25);
+              background: linear-gradient(135deg, #7c3aed, #6d28d9);
               border-color: rgba(255, 255, 255, 0.4);
               transform: scale(1.05);
+            }
+
+            &.large {
+              width: 50px;
+              height: 50px;
+              font-size: 1.1rem;
+            }
+
+            .avatarInitials {
+              font-weight: 700;
+              letter-spacing: 0.5px;
             }
           }
 
@@ -135,28 +147,22 @@
             right: 0px;
             margin-top: 0.75rem;
             background: white;
-            border-radius: 12px;
+            border-radius: 16px;
             box-shadow: 
               0 10px 40px rgba(0, 0, 0, 0.15),
               0 0 0 1px rgba(0, 0, 0, 0.05);
-            min-width: 320px;
+            min-width: 280px;
             z-index: 1000;
             overflow: hidden;
             animation: dropdownFadeIn 0.2s ease-out;
 
             .profileInfo {
               display: flex;
-              align-items: flex-start;
+              align-items: center;
               gap: 0.75rem;
-              padding: 1rem .75rem;
+              padding: 1.25rem 1rem;
               background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
               border-bottom: 1px solid #e2e8f0;
-
-              .profileIcon {
-                font-size: 2.5rem;
-                color: #64748b;
-                margin-top: 5px;
-              }
 
               .profileDetails {
                 .profileName {
@@ -164,17 +170,19 @@
                   color: #2e3f5a;
                   font-size: 1rem;
                   text-transform: capitalize;
+                  margin-bottom: 0.25rem;
                 }
 
                 .profileRole {
-                  font-size: 0.75rem;
+                  font-size: 0.8rem;
                   color: #64748b;
+                  font-weight: 500;
                 }
               }
             }
 
             .dropdownMenu {
-              padding: 0.3rem;
+              padding: 0.5rem;
 
               .menuItem {
                 width: 100%;
@@ -183,22 +191,24 @@
                 background: none;
                 text-align: left;
                 cursor: pointer;
-                border-radius: 8px;
-                font-size: 0.875rem;
+                border-radius: 10px;
+                font-size: 0.9rem;
                 color: #475569;
                 transition: all 0.2s ease;
                 display: flex;
                 align-items: center;
-                gap: 0.5rem;
+                gap: 0.75rem;
+                font-weight: 500;
 
                 &:hover {
                   background: #f1f5f9;
                   color: #1e293b;
+                  transform: translateX(4px);
                 }
 
                 &.logout {
                   color: #ef4444;
-                  font-weight: 500;
+                  font-weight: 600;
 
                   &:hover {
                     background: #fef2f2;
@@ -577,10 +587,10 @@
     }
   }
 
-  // Record Card Styles (Same as record.scss)
+  // Record Card Styles - Purple Theme with Item Cards like Record component
   .recordCard {
     background: white;
-    border: 1px solid #d1d8e1;
+    border: 1px solid #e2e8f0;
     border-radius: 16px;
     padding: 0;
     cursor: pointer;
@@ -591,7 +601,7 @@
 
     &:hover {
       transform: translateY(-4px);
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+      box-shadow: 0 8px 30px rgba(139, 92, 246, 0.15);
       border-color: #cbd5e1;
     }
 
@@ -612,7 +622,7 @@
         flex: 1;
         min-width: 0;
 
-        .customerAvatar {
+        .expenseAvatar {
           width: 48px;
           height: 48px;
           border-radius: 12px;
@@ -621,18 +631,18 @@
           justify-content: center;
           color: white;
           font-weight: 600;
-          font-size: 1rem;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+          font-size: 1.1rem;
+          box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
           flex-shrink: 0;
           margin-top: 2px;
         }
 
-        .customerMainInfo {
+        .expenseMainInfo {
           flex: 1;
           min-width: 0;
           overflow: hidden;
 
-          .customerName {
+          .expenseDate {
             margin: 0 0 0.75rem 0;
             font-size: 1.1rem;
             font-weight: 600;
@@ -706,11 +716,10 @@
         text-align: center;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         flex-shrink: 0;
-        background: #8b5cf6;
       }
     }
 
-    // Items Section
+    // Items Section - Like Record component
     .itemsSection {
       padding: 1.5rem;
 
@@ -736,7 +745,7 @@
             left: 0;
             width: 40px;
             height: 3px;
-            background: linear-gradient(90deg, #10b981, #34d399);
+            background: linear-gradient(90deg, #8b5cf6, #7c3aed);
             border-radius: 2px;
           }
         }
@@ -745,21 +754,21 @@
           display: flex;
           align-items: center;
           gap: 0.5rem;
-          background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+          background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
           padding: 0.6rem 1rem;
           border-radius: 12px;
-          border: 1px solid rgba(16, 185, 129, 0.3);
-          box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);
+          border: 1px solid rgba(139, 92, 246, 0.3);
+          box-shadow: 0 2px 8px rgba(139, 92, 246, 0.1);
 
           .totalLabel {
             font-size: 0.8rem;
-            color: #065f46;
+            color: #374151;
             font-weight: 500;
           }
 
           .totalAmount {
             font-size: 0.9rem;
-            color: #065f46;
+            color: #374151;
             font-weight: 700;
           }
         }
@@ -783,7 +792,7 @@
             left: 0;
             width: 4px;
             height: 100%;
-            background: linear-gradient(180deg, #10b981, #34d399);
+            background: linear-gradient(180deg, #8b5cf6, #7c3aed);
             border-radius: 2px 0 0 2px;
           }
 
@@ -857,21 +866,21 @@
           justify-content: center;
           gap: 0.5rem;
           padding: 0.75rem 1rem;
-          color: #065f46;
+          color: #7c3aed;
           font-size: 0.85rem;
           font-weight: 600;
-          background: #f0fdf4;
+          background: #f3f4f6;
           border-radius: 10px;
           margin-top: 0.5rem;
-          border: 1.5px solid #10b981;
+          border: 1.5px solid #8b5cf6;
           transition: all 0.3s ease;
           cursor: pointer;
-          box-shadow: 0 2px 6px rgba(16, 185, 129, 0.1);
+          box-shadow: 0 2px 6px rgba(139, 92, 246, 0.1);
 
           &:hover {
-            background: #dcfce7;
+            background: #e5e7eb;
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
           }
 
           .showMoreIcon {
@@ -1199,14 +1208,14 @@
           }
 
           .profile {
-            .initials {
+            .profileAvatar {
               width: 40px;
               height: 40px;
               font-size: 0.9rem;
             }
 
             .profileDropdown {
-              min-width: 300px;
+              min-width: 260px;
               right: -10px;
             }
           }
@@ -1309,7 +1318,7 @@
         .header-actions {
           .profile {
             .profileDropdown {
-              min-width: 280px;
+              min-width: 240px;
               right: -15px;
             }
           }
@@ -1379,7 +1388,7 @@
 .iconBtn:focus,
 .actionBtn:focus,
 .backButton:focus,
-.initials:focus,
+.profileAvatar:focus,
 .exportBtn:focus {
   outline: 3px solid rgba(139, 92, 246, 0.5);
   outline-offset: 2px;
