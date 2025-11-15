@@ -158,6 +158,25 @@ function App() {
         />
 
         <Route
+          path="*"
+          element={
+            isAuth ? (
+              <Home
+                setIsAuth={setIsAuth}
+                isAdmin={isAdmin}
+                setIsAdmin={setIsAdmin}
+                username={username}
+                setUsername={setUsername}
+                fullname={fullname}
+                setFullname={setFullname}
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+
+        <Route
           path="/owner"
           element={
             isAuth && isAdmin ? (
